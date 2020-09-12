@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
+import functools
 import math
 import pylink
 
 import datetime
+
+VEHICLES = ['iso', 'nso', 'rsu']
 
 class Grant(object):
     """Equity grants.
@@ -27,7 +30,6 @@ The following counts are available:
                  start=None,
                  n_periods=48,
                  period_months=1,
-                 sale_qty=0,
                  negative_cliff=False):
         """Grant object, including requested actions.
 
@@ -41,7 +43,6 @@ The following counts are available:
         start:          beginning date of regular vesting (mm/dd/yy)
         n_periods:      number of vesting periods
         period_months:  number of months in a vesting period
-        sale_qty:       the number of shares to sell
         negative_cliff: subtract the cliff amount from the last vest period
         """
 
@@ -67,11 +68,6 @@ The following counts are available:
         self.start = self._parse_date(start)
         self.n_periods = n_periods
         self.period_months = period_months
-
-        # So you can register individual actions with individual
-        # grants
-        self.sale_qty = sale_qty
-        assert (sale_qty <= (n - sold))
 
         self.negative_cliff = negative_cliff
 
@@ -194,28 +190,51 @@ class Position(object):
     def __init__(self, grants):
         self.grants = grants
 
+        gdict = {}
+        for g in grants: gdict[g.name] = g
+
         self.tribute = {
             'position_obj': self,
             'grants_lst': grants,
+            'grants_dict': gdict,
             'max_sellable_restricted_frac': 0.2,
 
-            'shares_total_n': self.shares_total,
             'shares_sellable_n': self.shares_sellable,
             'shares_sellable_restricted_n': self.shares_sellable_restricted,
-            'shares_vested_n': self.shares_vested,
-            'shares_vested_nso_n': self.shares_vested_nso,
-            'shares_outstanding_n': self.shares_outstanding,
-            'shares_vested_outstanding_n': self.shares_vested_outstanding,
-            'shares_vested_outstanding_nso_n': self.shares_vested_outstanding_nso,
-            'shares_vested_outstanding_rsu_n': self.shares_vested_outstanding_rsu,
-            'shares_unvested_n': self.shares_unvested,
-            'shares_held_n': self.shares_held,
-            'vested_outstanding_exercise_cost_usd': self.vested_outstanding_exercise_cost,
-            'outstanding_exercise_cost_usd': self.outstanding_exercise_cost,
-            'total_rsu_n': self.total_rsu,
-            'total_iso_n': self.total_iso,
-            'total_nso_n': self.total_nso,
             }
+
+        self._helper_x('shares_total%s_n', 'n')
+        self._helper_x('shares_sold%s_n', 'sold')
+        self._helper_x('shares_exercised%s_n', 'exercised')
+        self._helper_x('shares_vested%s_n', 'vested', *['query_date'])
+        self._helper_x('shares_unvested%s_n', 'unvested', *['query_date'])
+        self._helper_x('shares_vested_outstanding%s_n', 'vested_outstanding', *['query_date'])
+        self._helper_x('shares_outstanding%s_n', 'outstanding', call=True)
+        self._helper_x('shares_held%s_n', 'held', call=True)
+        self._helper_x('exercise_cost_outstanding%s_usd', 'outstanding_cost', call=True)
+        self._helper_x('exercise_cost_vested_outstanding%s_usd', 'vested_outstanding_cost', *['query_date'])
+
+    def _helper_x(self, fmt, field, *args, call=False):
+        if len(args): call=True
+
+        # ohhh late bindings...
+        for typ in VEHICLES:
+            def __outer(typ):
+                def __inner(m):
+                    if call:
+                        cargs = [getattr(m, node) for node in args]
+                        f = lambda g: getattr(g, field)(*cargs) if g.vehicle == typ else 0
+                    else:
+                        f = lambda g: getattr(g, field) if g.vehicle == typ else 0
+                    return sum(list(map(f, m.grants_lst)))
+                return __inner
+            f = functools.partial(__outer, typ)()
+            self.tribute[fmt % ('_%s'%typ)] = f
+
+        # let's not forget the summation
+        def __tmp(m):
+            return sum([ getattr(m, fmt % ('_%s'%typ)) for typ in VEHICLES ])
+        self.tribute[fmt % ('')] = __tmp
 
     def shares_total(self, m):
         return sum(list(map(lambda g: g.n, m.grants_lst)))
@@ -227,64 +246,15 @@ class Position(object):
                 + 0 )
 
     def shares_sellable_restricted(self, m):
-        return math.floor((m.total_iso_n + m.total_nso_n)
-                          * m.max_sellable_restricted_frac)
+        n_unsold = ( 0
+                     + (m.shares_total_iso_n - m.shares_sold_iso_n)
+                     + (m.shares_total_nso_n - m.shares_sold_nso_n)
+                     + 0 )
+        max_shares = int(math.floor(n_unsold * m.max_sellable_restricted_frac))
 
-    def shares_unvested(self, m):
-        return sum(list(map(lambda g: g.unvested(m.query_date), m.grants_lst)))
+        available = ( 0
+                      + m.shares_vested_outstanding_iso_n
+                      + m.shares_vested_outstanding_nso_n
+                      + 0 )
 
-    def shares_vested(self, m):
-        return sum(list(map(lambda g: g.vested(m.query_date), m.grants_lst)))
-
-    def shares_vested_nso(self, m):
-        f = lambda g: g.vested(m.query_date) if g.vehicle == 'nso' else 0
-        return sum(list(map(f, m.grants_lst)))
-
-    def shares_vested_outstanding_nso(self, m):
-        f = lambda g: g.vested_outstanding(m.query_date) if g.vehicle == 'nso' else 0
-        return sum(list(map(f, m.grants_lst)))
-
-    def shares_vested_outstanding_rsu(self, m):
-        f = lambda g: g.vested_outstanding(m.query_date) if g.vehicle == 'rsu' else 0
-        return sum(list(map(f, m.grants_lst)))
-
-    def shares_vested_outstanding(self, m):
-        return sum(list(map(lambda g: g.vested_outstanding(m.query_date),
-                            m.grants_lst)))
-
-    def shares_outstanding(self, m):
-        return sum(list(map(lambda g: g.outstanding(m.query_date),
-                            m.grants_lst)))
-
-    def shares_exercised(self, m):
-        return sum(list(map(lambda g: g.exercised, m.grants_lst)))
-
-    def shares_sold(self, m):
-        return sum(list(map(lambda g: g.sold, m.grants_lst)))
-
-    def shares_held(self, m):
-        return sum(list(map(lambda g: g.held(), m.grants_lst)))
-
-    def vested_outstanding_exercise_cost(self, m):
-        return sum(list(map(lambda g: g.vested_outstanding_cost(m.query_date),
-                            m.grants_lst)))
-
-    def outstanding_exercise_cost(self, m):
-        return sum(list(map(lambda g: g.outstanding_cost(m.query_date),
-                            m.grants_lst)))
-
-    def total_rsu(self, m):
-        return sum(list(map(lambda g: g.n if g.vehicle == 'rsu' else 0,
-                            m.grants_lst)))
-        
-    def total_iso(self, m):
-        return sum(list(map(lambda g: g.n if g.vehicle == 'iso' else 0,
-                            m.grants_lst)))
-
-    def total_nso(self, m):
-        return sum(list(map(lambda g: g.n if g.vehicle == 'nso' else 0,
-                            m.grants_lst)))
-        
-    def shares_outstanding(self, m):
-        return sum(list(map(lambda g: g.outstanding(m.query_date),
-                            m.grants_lst)))
+        return min(available, max_shares)

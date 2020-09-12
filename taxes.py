@@ -197,16 +197,30 @@ class Taxes(object):
                  + m.fed_ss_taxes_usd
                  + 0.0 )
 
+    def amt_exemption_usd(self, m):
+        i_crit = 1036800            # "phase-out threshold"
+        income = m.amt_base_income  # "amti"
+        base = 113400
+
+        if income <= i_crit: return base
+        if income > (4 * base) + i_crit: return 0
+        return base - ((income - i_crit) * 0.25)
+
+    def amt_base_income(self, m):
+        return ( 0.0
+                 + m.reg_income_usd
+                 + m.rsu_income_usd
+                 + m.nso_income_usd
+                 + m.iso_exercise_income_usd
+                 + m.iso_sales_income_usd
+                 - m.tax_exempt_contributions_usd
+                 + 0.0 )
+
     def amt_taxable_income(self, m):
         return max(0.0,
                    ( 0.0
-                     + m.reg_income_usd
-                     + m.rsu_income_usd
-                     + m.nso_income_usd
-                     + m.iso_exercise_income_usd
-                     + m.iso_sales_income_usd
+                     + m.amt_base_income_usd
                      - m.amt_exemption_usd
-                     - m.tax_exempt_contributions_usd
                      + 0.0 )
                    )
 

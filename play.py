@@ -50,9 +50,9 @@ if __name__ == '__main__':
 
     for name in grants:
         g = grants[name]
-        if g.vehicle == 'rsu':
+        if g.vehicle == 'rsu' or True:
             #print('%10s: %d' % (g.name, g.vested_outstanding('9/9/20')))
-            g.sale_qty = g.vested(m.ipo_date)
+            g.sale_qty = g.n
 
     moneys = round(m.rsu_income_usd + m.nso_income_usd, 2)
 

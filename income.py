@@ -9,6 +9,7 @@ class Income(object):
     def __init__(self):
 
         self.tribute = {
+            'max_sellable_restricted_frac': 0.2,
             'sales_simulation_data': self.sales_simulation,
             'rsu_income_usd': self.rsu_income,
             'nso_income_usd': self.nso_income,
@@ -41,3 +42,4 @@ class Income(object):
 
     def nso_income(self, m):
         return m.sales_simulation_data['nso']
+
