@@ -68,13 +68,12 @@ class Report(object):
         print("="*60)
         print("Cap Table")
         print("="*60)
-        hdr_fmt = '        ID       Type  Strike     Vested            Sold        Remaining'
-        row_fmt = '%(name)15s  %(vehicle)s %(strike)6s %(vested)15s %(sold)15s %(rem)15s'
 
         start_lst = m.grants_lst
         end_lst = m.rem_grants_lst
 
-        print(hdr_fmt)
+        print('        ID       Type  Strike        Vested            Sold       Remaining')
+        row_fmt = '%(name)15s  %(vehicle)s %(strike)6s %(vested)15s %(sold)15s %(rem)15s'
         for i in range(len(start_lst)):
             start = start_lst[i]
             end = end_lst[i]
@@ -83,9 +82,9 @@ class Report(object):
                 'name':    start.name,
                 'vehicle': start.vehicle,
                 'strike':  start.strike_usd,
-                'vested':  comma(start.vested(m.query_date)),
-                'sold':    comma(end.sold - start.sold),
-                'rem':     comma(end.vested_unsold(m.query_date))
+                'vested':  comma(start.vested(m.query_date))[:-3],
+                'sold':    comma(end.sold - start.sold)[:-3],
+                'rem':     comma(end.vested_unsold(m.query_date))[:-3],
                 }
             print(row_fmt % kwargs)
         print()

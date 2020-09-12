@@ -104,9 +104,10 @@ class Investigator(object):
                  - m.shares_withheld_rsu_usd
                  + 0.0 )
         needed = int(math.ceil(owed / float(m.ipo_price_usd)))
-        print("Owed: %s" % explosive.comma(owed))
+        print("Share Price: %.2f" % m.ipo_price_usd)
+        print("Owed:    %s" % explosive.comma(owed))
         pct = int((needed * 100) / m.shares_vested_rsu_n)
-        print("Sell:      %d (%d %%)" % (needed, pct))
+        print("Sell:        %d (%d %%)" % (needed, pct))
 
         self._qst(4, "How much cash if we sell it all (start with NSO)?")
         self.sell_it_all(m)

@@ -41,7 +41,40 @@ GRANTS = [
           period_months=1),
     ]
 
+# Married filing jointly numbers
+fed_tax_table = {
+    0      : 0.1,
+    19750  : 0.12,
+    80250  : 0.22,
+    171050 : 0.24,
+    326600 : 0.32,
+    414700 : 0.35,
+    622050 : 0.37
+    }
+
+# Married filing jointly numbers
+state_tax_table = {
+    0 : 0.01,
+    17618 : 0.02,
+    41766 : 0.04,
+    65920 : 0.06,
+    91506 : 0.08,
+    115648 : 0.093,
+    590746 : 0.103,
+    708890 : 0.113,
+    1181484 : 0.123,
+    1999999 : 0.133
+    }
+
 constants = {
+
+    # Married filing jointly numbers
+    'fed_tax_table': fed_tax_table,
+    'state_tax_table': state_tax_table,
+    'fed_std_deduction_usd': 24800,
+    'amt_exemption_usd': 113400,
+    'state_std_deduction_usd': 4537,
+
     'ipo_price_usd': 12,
     'query_date': '9/23/20',
 

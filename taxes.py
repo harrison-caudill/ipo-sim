@@ -7,29 +7,6 @@ import pylink
 class Taxes(object):
 
     def __init__(self, **overrides):
-        fed_tax_table = {
-            0      : 0.1,
-            19750  : 0.12,
-            80250  : 0.22,
-            171050 : 0.24,
-            326600 : 0.32,
-            414700 : 0.35,
-            622050 : 0.37
-            }
-
-        state_tax_table = {
-            0 : 0.01,
-            17618 : 0.02,
-            41766 : 0.04,
-            65920 : 0.06,
-            91506 : 0.08,
-            115648 : 0.093,
-            590746 : 0.103,
-            708890 : 0.113,
-            1181484 : 0.123,
-            1999999 : 0.133
-            }
-
         medicare_tax_table = {
             0: 0.0145,
             250*1e3: 0.0145 + 0.009
@@ -53,17 +30,10 @@ class Taxes(object):
         self.tribute = {
 
             # The various tax tables
-            'fed_tax_table': fed_tax_table,
-            'amt_tax_table': amt_tax_table,
             'medicare_tax_table': medicare_tax_table,
             'ss_tax_table': ss_tax_table,
-            'state_tax_table': state_tax_table,
+            'amt_tax_table': amt_tax_table,
             'sdi_tax_table': sdi_tax_table,
-
-            # The various standard deductions
-            'fed_std_deduction_usd': 24800,
-            'amt_exemption_usd': 113400,
-            'state_std_deduction_usd': 4537,
 
             # Util
             'taxes_obj': self,
