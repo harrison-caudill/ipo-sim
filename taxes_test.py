@@ -5,20 +5,21 @@ import pytest
 
 import taxes as deathAnd
 import income as myMeager
+import position as anAwkward
 
 
 @pytest.fixture
 def model():
-    return pylink.DAGModel([
-        deathAnd.Taxes(),
-        myMeager.Income(),
-        ],
-                           **{
-            'palantir_401k_usd': 0,
-            'palantir_fsa_usd': 0,
-            'palantir_drca_usd': 0,
-            'reg_income_usd': 0,
-                               })
+    return pylink.DAGModel([deathAnd.Taxes(),
+                            anAwkward.Position([]),
+                            myMeager.Income(),],
+                           **{'palantir_401k_usd': 0,
+                              'palantir_fsa_usd': 0,
+                              'palantir_drca_usd': 0,
+                              'reg_income_usd': 0,
+                              'ipo_price_usd': 1,
+                              'query_date': '1/10/10',
+                              })
 
 
 class TestTaxes(object):
@@ -84,10 +85,10 @@ class TestTaxes(object):
         e = m.enum
 
         m.override(e.reg_income_usd, 1)
-        m.override(e.rsu_income_usd, 1)
         m.override(e.nso_income_usd, 1)
         m.override(e.iso_sales_income_usd, 1)
-        m.override(e.iso_exercise_income_usd, 1)
+        m.override(e.shares_vested_rsu_n, 1)
+        m.override(e.ipo_price_usd, 1)
         m.override(e.fed_tax_deduction_usd, 1)
         m.override(e.tax_exempt_contributions_usd, 1)
 
@@ -278,6 +279,10 @@ class TestTaxes(object):
         e = m.enum
 
         m.override(e.reg_income_usd, 1)
+        m.override(e.nso_income_usd, 1)
+        m.override(e.iso_sales_income_usd, 1)
+        m.override(e.shares_vested_rsu_n, 1)
+        m.override(e.ipo_price_usd, 1)
         m.override(e.rsu_income_usd, 1)
         m.override(e.nso_income_usd, 1)
         m.override(e.iso_sales_income_usd, 1)

@@ -50,7 +50,6 @@ constants = {
     'palantir_drca_usd': 0,
     'reg_income_usd': 0,
     'ext_amt_income_usd': 0,
-    'iso_exercise_income_usd': 0,
     'fed_withheld_usd': 0,
     'state_withheld_usd': 0,
     }

@@ -20,7 +20,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<0,
+          n_shares=1<<0,
           period_months=1),
 
     Grant(name='nso',
@@ -28,7 +28,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<1,
+          n_shares=1<<1,
           exercised=0,
           sold=0,
           period_months=1),
@@ -38,7 +38,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<2,
+          n_shares=1<<2,
           exercised=0,
           sold=0,
           period_months=1),
@@ -48,7 +48,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<3,
+          n_shares=1<<3,
           exercised=1,
           sold=0,
           period_months=1),
@@ -58,7 +58,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<4,
+          n_shares=1<<4,
           exercised=1<<4,
           sold=0,
           period_months=1),
@@ -68,7 +68,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<5,
+          n_shares=1<<5,
           exercised=1,
           sold=1,
           period_months=1),
@@ -78,7 +78,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<6,
+          n_shares=1<<6,
           exercised=1<<6,
           sold=1<<6,
           period_months=1),
@@ -88,7 +88,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<7,
+          n_shares=1<<7,
           exercised=0,
           sold=0,
           period_months=1),
@@ -98,7 +98,7 @@ GRANTS = [
           strike_usd=40,
           start='1/1/20',
           n_periods=12,
-          n=1<<8,
+          n_shares=1<<8,
           exercised=0,
           sold=0,
           period_months=1),
@@ -108,7 +108,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=1<<9,
+          n_shares=1<<9,
           exercised=0,
           sold=0,
           period_months=1),
@@ -118,7 +118,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=16,
-          n=1<<10,
+          n_shares=1<<10,
           exercised=0,
           sold=0,
           period_months=3),
@@ -130,7 +130,7 @@ EASY = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=10,
+          n_shares=10,
           period_months=1),
 
     Grant(name='nso',
@@ -138,7 +138,7 @@ EASY = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=10,
+          n_shares=10,
           exercised=0,
           sold=0,
           period_months=1),
@@ -148,13 +148,13 @@ EASY = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=10,
+          n_shares=10,
           exercised=0,
           sold=0,
           period_months=1),
     ]
 
-TOT = (max(list(map(lambda x: x.n, GRANTS)))<<1)-1
+TOT = (max(list(map(lambda x: x.n_shares, GRANTS)))<<1)-1
 QUERY_DATE = '11/1/20'
 
 @pytest.fixture
@@ -173,7 +173,7 @@ class TestGrant(object):
                   strike_usd=4,
                   start='1/2/20',
                   n_periods=12,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 0 == g.vested('1/30/10')
@@ -189,7 +189,7 @@ class TestGrant(object):
                   strike_usd=4,
                   start='1/30/20',
                   n_periods=12,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 0 == g.vested('2/28/10')
@@ -200,7 +200,7 @@ class TestGrant(object):
                   strike_usd=4,
                   start='1/1/20',
                   n_periods=4,
-                  n=12,
+                  n_shares=12,
                   period_months=3)
 
         assert 0 == g.vested('1/30/20')
@@ -213,7 +213,7 @@ class TestGrant(object):
                   strike_usd=4,
                   start='1/2/20',
                   n_periods=12,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 12-0 == g.unvested('1/30/10')
@@ -229,7 +229,7 @@ class TestGrant(object):
                   strike_usd=4,
                   start='1/1/20',
                   n_periods=4,
-                  n=12,
+                  n_shares=12,
                   period_months=3)
 
         assert 12-0 == g.unvested('1/30/20')
@@ -243,7 +243,7 @@ class TestGrant(object):
                   start='1/2/20',
                   exercised=6,
                   n_periods=12,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 6 == g.vested_outstanding('1/2/21')
@@ -254,7 +254,7 @@ class TestGrant(object):
                   strike_usd=4,
                   start='1/2/20',
                   n_periods=12,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 12 == g.outstanding()
@@ -266,7 +266,7 @@ class TestGrant(object):
                   n_periods=4,
                   exercised=6,
                   sold=6,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 6 == g.outstanding()
@@ -279,7 +279,7 @@ class TestGrant(object):
                   n_periods=4,
                   exercised=6,
                   sold=6,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 0 == g.held()
@@ -291,7 +291,7 @@ class TestGrant(object):
                   n_periods=4,
                   exercised=6,
                   sold=3,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 3 == g.held()
@@ -302,7 +302,7 @@ class TestGrant(object):
                   strike_usd=4,
                   start='1/2/20',
                   n_periods=12,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 12*4 == g.outstanding_cost()
@@ -314,7 +314,7 @@ class TestGrant(object):
                   n_periods=4,
                   exercised=6,
                   sold=6,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 6*4 == g.outstanding_cost()
@@ -326,7 +326,7 @@ class TestGrant(object):
                   start='1/2/20',
                   exercised=6,
                   n_periods=12,
-                  n=12,
+                  n_shares=12,
                   period_months=1)
 
         assert 6*4 == g.vested_outstanding_cost('1/2/21')

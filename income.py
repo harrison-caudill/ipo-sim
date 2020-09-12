@@ -9,6 +9,8 @@ class Income(object):
     def __init__(self):
 
         self.tribute = {
+            # FIXME
+            'iso_exercise_income_usd': 0,
             'income_obj': self,
             'sales_simulation_data': self.sales_simulation,
             'rsu_income_usd': self.rsu_income,
@@ -57,12 +59,13 @@ class Income(object):
     def rsu_withheld(self, m):
         # FIXME: Assumes you have exceeded thresholds for the other
         #        random things (ss, sdi, foo, bar)
+        # FIXME: Unit Test
         mtab = m.medicare_tax_table
         med_val = max([mtab[k] for k in mtab.keys()])
         rate = ( 0.0
                  + m.rsu_fed_hold_rate
-                 + m.rsu_state_hold_rate
-                 + med_val
+                 # + m.rsu_state_hold_rate
+                 # + med_val
                  + 0.0 )
         return int(math.ceil(m.shares_vested_rsu_n * rate))
 

@@ -3,10 +3,63 @@
 import functools
 import math
 import pylink
+import calendar
 
 import datetime
 
 VEHICLES = ['iso', 'nso', 'rsu']
+
+
+def parse_date(d):
+    if str == type(d):
+        return datetime.datetime.strptime(d, '%m/%d/%y')
+    else:
+        return d
+
+
+def mon_diff(start, end):
+    return 12*(end.year - start.year) + (end.month - start.month)
+
+
+def from_table(name,
+               vehicle,
+               first_date, first_val,
+               second_date, second_val,
+               last_date, last_val,
+               n_shares,
+               exercised=0,
+               sold=0,
+               strike_usd=0):
+
+    first_date = parse_date(first_date)
+    second_date = parse_date(second_date)
+    last_date = parse_date(last_date)
+
+    last_mon_day = calendar.monthrange(first_date.year, first_date.month)
+    use_last_day = (last_mon_day == first_date.day)
+
+    # number of months as measured by a banker
+    full_months = mon_diff(first_date, last_date)
+    period_months = mon_diff(first_date, second_date)
+
+    n_periods = full_months / float(period_months)
+    assert(not (n_periods % 1))
+
+    n_cliff = first_val
+    negative_cliff = (last_val < (second_val-1))
+
+    return Grant(name=name,
+                 vehicle=vehicle,
+                 n_cliff=n_cliff,
+                 n_shares=n_shares,
+                 exercised=exercised,
+                 strike_usd=strike_usd,
+                 sold=sold,
+                 start=first_date,
+                 n_periods=n_periods,
+                 period_months=period_months,
+                 negative_cliff=negative_cliff)
+
 
 class Grant(object):
     """Equity grants.
@@ -23,7 +76,7 @@ The following counts are available:
                  name=None,
                  vehicle=None,
                  n_cliff=0,
-                 n=None,
+                 n_shares=None,
                  exercised=0,
                  sold=0,
                  strike_usd=0,
@@ -35,7 +88,7 @@ The following counts are available:
 
         name:           the grant-id from palantir
         vehicle:        nso, iso, or rsu
-        n:              total number of shares
+        n_shares:       total number of shares
         n_cliff:        number of shares vested at cliff date
         exercised:      number of shares that were exercised (iso/nso only)
         sold:           number of shares that were sold
@@ -52,8 +105,8 @@ The following counts are available:
         assert(vehicle in ['rsu', 'iso', 'nso'])
         self.vehicle = vehicle
 
-        self.n = n
-        assert (n)
+        self.n_shares = n_shares
+        assert (n_shares)
 
         self.n_cliff = n_cliff
 
@@ -65,21 +118,21 @@ The following counts are available:
         self.strike_usd = strike_usd
         assert (strike_usd or ('rsu' == vehicle))
 
-        self.start = self._parse_date(start)
+        self.start = parse_date(start)
         self.n_periods = n_periods
         self.period_months = period_months
 
         self.negative_cliff = negative_cliff
 
         # This works properly with None's
-        assert(exercised is None or exercised <= n)
+        assert(exercised is None or exercised <= n_shares)
         assert(exercised is None or sold <= exercised)
 
     def unvested(self, on):
-        return self.n - self.vested(on)
+        return self.n_shares - self.vested(on)
 
     def vested(self, on):
-        on = self._parse_date(on)
+        on = parse_date(on)
 
         if on < self.start:
             # Asking for a date before vesting began
@@ -98,13 +151,13 @@ The following counts are available:
                           self.n_periods))
 
         # Calculate the number of shares per vesting period
-        n_vesting = self.n - self.n_cliff
+        n_vesting = self.n_shares - self.n_cliff
         if self.negative_cliff: n_vesting += self.n_cliff
         n_shares = int(math.floor(n_vesting / float(self.n_periods)))
 
         # Add that many shares each vesting period
         if periods >= self.n_periods:
-            retval = self.n
+            retval = self.n_shares
         else:
             retval = periods * n_shares + self.n_cliff
 
@@ -117,16 +170,10 @@ The following counts are available:
         return self.vested(on) - self.exercised
 
     def outstanding(self):
-        return self.n - self.exercised
+        return self.n_shares - self.exercised
 
     def held(self):
         return self.exercised - self.sold
-
-    def _parse_date(self, d):
-        if str == type(d):
-            return datetime.datetime.strptime(d, '%m/%d/%y')
-        else:
-            return d
 
     def outstanding_cost(self):
         return self.outstanding() * self.strike_usd
@@ -203,7 +250,7 @@ class Position(object):
             'shares_sellable_restricted_n': self.shares_sellable_restricted,
             }
 
-        self._helper_x('shares_total%s_n', 'n')
+        self._helper_x('shares_total%s_n', 'n_shares')
         self._helper_x('shares_sold%s_n', 'sold')
         self._helper_x('shares_exercised%s_n', 'exercised')
         self._helper_x('shares_vested%s_n', 'vested', *['query_date'])
@@ -215,6 +262,18 @@ class Position(object):
         self._helper_x('exercise_cost_vested_outstanding%s_usd', 'vested_outstanding_cost', *['query_date'])
 
     def _helper_x(self, fmt, field, *args, call=False):
+        """Generate summation nodes for counting types of stock.
+
+        OK, this method is complicated.  Because of python's
+        late-bindings, and the need to generate and register callable
+        objects, we use functools to create a curried outer function
+        which returns the callable object we actually want to register.
+
+        the fmt is the name of the node with a single %s which will be
+        given the vehicle
+
+        field is the attribute to reference in the grant object
+        """
         if len(args): call=True
 
         # ohhh late bindings...
