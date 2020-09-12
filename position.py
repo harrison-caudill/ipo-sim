@@ -30,6 +30,18 @@ def from_table(name,
                exercised=0,
                sold=0,
                strike_usd=0):
+    """Generate a Grant object from rows in Sharepoint.
+
+    name:       Grant ID from sharepoint
+    vehicle:    one of 'iso', 'nso', or 'rsu'
+    first_*:    The date (mm/dd/yy) and shares vested from the first row in SP
+    second_*:   Ditto, but second row
+    last_*:     Ditto, but last row
+    n_shares:   Total number of shares
+    exercised:  Number that have been exercised already
+    sold:       Number that have been sold already
+    strike_usd: Strike price in USD (zero OK for rsu)
+    """
 
     first_date = parse_date(first_date)
     second_date = parse_date(second_date)
@@ -184,6 +196,9 @@ The following counts are available:
         assert(outstanding >= 0)
         return outstanding * self.strike_usd
 
+    def vested_unsold(self, on):
+        return self.vested(on) - self.sold
+
     def sell(self, on, n, fmv_usd, prefer_exercise=True, update=False):
         """Provides the info about a sell at a given FMV.
 
@@ -255,13 +270,26 @@ class Position(object):
         self._helper_x('shares_exercised%s_n', 'exercised')
         self._helper_x('shares_vested%s_n', 'vested', *['query_date'])
         self._helper_x('shares_unvested%s_n', 'unvested', *['query_date'])
+        self._helper_x('shares_vested_unsold%s_n', 'vested_unsold', *['query_date'])
         self._helper_x('shares_vested_outstanding%s_n', 'vested_outstanding', *['query_date'])
         self._helper_x('shares_outstanding%s_n', 'outstanding', call=True)
         self._helper_x('shares_held%s_n', 'held', call=True)
         self._helper_x('exercise_cost_outstanding%s_usd', 'outstanding_cost', call=True)
         self._helper_x('exercise_cost_vested_outstanding%s_usd', 'vested_outstanding_cost', *['query_date'])
 
-    def _helper_x(self, fmt, field, *args, call=False):
+        self._helper_x('rem_shares_total%s_n', 'n_shares', rem=True)
+        self._helper_x('rem_shares_sold%s_n', 'sold', rem=True)
+        self._helper_x('rem_shares_exercised%s_n', 'exercised', rem=True)
+        self._helper_x('rem_shares_vested%s_n', 'vested', *['query_date'], rem=True)
+        self._helper_x('rem_shares_unvested%s_n', 'unvested', *['query_date'], rem=True)
+        self._helper_x('rem_shares_vested_unsold%s_n', 'vested_unsold', *['query_date'], rem=True)
+        self._helper_x('rem_shares_vested_outstanding%s_n', 'vested_outstanding', *['query_date'], rem=True)
+        self._helper_x('rem_shares_outstanding%s_n', 'outstanding', call=True, rem=True)
+        self._helper_x('rem_shares_held%s_n', 'held', call=True, rem=True)
+        self._helper_x('rem_exercise_cost_outstanding%s_usd', 'outstanding_cost', call=True, rem=True)
+        self._helper_x('rem_exercise_cost_vested_outstanding%s_usd', 'vested_outstanding_cost', *['query_date'], rem=True)
+
+    def _helper_x(self, fmt, field, *args, call=False, rem=False):
         """Generate summation nodes for counting types of stock.
 
         OK, this method is complicated.  Because of python's
@@ -285,7 +313,8 @@ class Position(object):
                         f = lambda g: getattr(g, field)(*cargs) if g.vehicle == typ else 0
                     else:
                         f = lambda g: getattr(g, field) if g.vehicle == typ else 0
-                    return sum(list(map(f, m.grants_lst)))
+                    lst = m.rem_grants_lst if rem else m.grants_lst
+                    return sum(list(map(f, lst)))
                 return __inner
             f = functools.partial(__outer, typ)()
             self.tribute[fmt % ('_%s'%typ)] = f

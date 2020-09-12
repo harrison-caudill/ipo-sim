@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import copy
 import math
 import pylink
 
@@ -17,6 +18,8 @@ class Income(object):
             'nso_income_usd': self.nso_income,
             'iso_sales_income_usd': self.iso_sales_income,
             'total_income_usd': self.total_income_usd,
+            'rem_grants_lst': self.rem_grants_lst,
+            'rem_grants_dict': self.rem_grants_dict,
 
             # RSU complexity
             'rsu_fed_hold_rate': 0.22,
@@ -34,17 +37,30 @@ class Income(object):
             'iso':  0.0,
             'nso':  0.0,
             'rsu':  0.0,
+            'end':  []
             }
         for g_id in m.sales_orders:
             order = m.sales_orders[g_id]
             g = m.grants_dict[g_id]
-            tmp = g.sell(m.query_date,
-                         order['qty'],
-                         m.ipo_price_usd,
-                         prefer_exercise=False,
-                         update=False)
+            copied = copy.deepcopy(g)
+            tmp = copied.sell(m.query_date,
+                              order['qty'],
+                              m.ipo_price_usd,
+                              prefer_exercise=False,
+                              update=True)
+            retval['end'].append(copied)
             retval[g.vehicle] += tmp['net_usd']
             retval['cost'] += tmp['cost']
+        return retval
+
+    def rem_grants_lst(self, m):
+        return m.sales_simulation_data['end']
+
+    def rem_grants_dict(self, m):
+        retval = {}
+        lst = m.rem_grants_lst
+        for g in lst:
+            retval[g.name] = g
         return retval
 
     def rsu_income(self, m):
@@ -58,14 +74,15 @@ class Income(object):
 
     def rsu_withheld(self, m):
         # FIXME: Assumes you have exceeded thresholds for the other
-        #        random things (ss, sdi, foo, bar)
+        #        random things (ss, sdi, foo, bar).  Drop an assert at
+        #        least
         # FIXME: Unit Test
         mtab = m.medicare_tax_table
         med_val = max([mtab[k] for k in mtab.keys()])
         rate = ( 0.0
                  + m.rsu_fed_hold_rate
-                 # + m.rsu_state_hold_rate
-                 # + med_val
+                 + m.rsu_state_hold_rate
+                 + med_val
                  + 0.0 )
         return int(math.ceil(m.shares_vested_rsu_n * rate))
 

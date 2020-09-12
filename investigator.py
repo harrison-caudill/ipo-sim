@@ -190,8 +190,10 @@ class Investigator(object):
         print("Exercise Cost:   %s" % explosive.comma(float(cost)))
         print("Cash Cleared:    %s" % explosive.comma(float(cleared)))
         print("Cash Remaining:  %s" % explosive.comma(float(remaining)))
-
         print()
+
+        self._qst(8, "What does our remaining position look like?")
+        rep.print_grants()
 
 if __name__ == '__main__':
     m = private.MODEL

@@ -58,12 +58,37 @@ class Report(object):
                  - m.shares_withheld_rsu_usd
                  + 0.0 )
         print("Taxes Owed:     %s" % comma(owed))
+        print("This is AFTER regular withholdings and AFTER the automatic RSU withholding")
         print()
         print()
 
 
     def print_grants(self):
-        pass
+        m = self.m
+        print("="*60)
+        print("Cap Table")
+        print("="*60)
+        hdr_fmt = '        ID       Type  Strike     Vested            Sold        Remaining'
+        row_fmt = '%(name)15s  %(vehicle)s %(strike)6s %(vested)15s %(sold)15s %(rem)15s'
+
+        start_lst = m.grants_lst
+        end_lst = m.rem_grants_lst
+
+        print(hdr_fmt)
+        for i in range(len(start_lst)):
+            start = start_lst[i]
+            end = end_lst[i]
+            assert(start.name == end.name)
+            kwargs = {
+                'name':    start.name,
+                'vehicle': start.vehicle,
+                'strike':  start.strike_usd,
+                'vested':  comma(start.vested(m.query_date)),
+                'sold':    comma(end.sold - start.sold),
+                'rem':     comma(end.vested_unsold(m.query_date))
+                }
+            print(row_fmt % kwargs)
+        print()
 
     def print_summary(self):
         pass

@@ -1,3 +1,6 @@
+
+ * Include the concept of changing vesting from monthly to quaterly
+
  * have grants and sell orders, but should transition to starting
    grants, sell orders, and ending grants.  that allows computing of
    final position, and maintains cache coherency.
