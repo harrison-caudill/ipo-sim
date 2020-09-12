@@ -46,7 +46,7 @@ class Taxes(object):
             }
 
         sdi_tax_table = {
-            0: 0.1,
+            0: 0.01,
             122909: 0.0
             }
 
@@ -65,20 +65,17 @@ class Taxes(object):
             'amt_exemption_usd': 113400,
             'state_std_deduction_usd': 4537,
 
-            # RSU complexity
-            'rsu_fed_hold_rate': 0.22,
-            'rsu_state_hold_rate': 0.1023,
-
             # Util
             'taxes_obj': self,
             'tax_exempt_contributions_usd': self.tax_exempt_contributions,
 
             # Federal Taxes
             'fed_taxes_usd': self.fed_taxes,
-            'fed_taxable_income_usd': self.fed_taxable_income, 
+            'fed_taxable_income_usd': self.fed_taxable_income,
             'fed_tax_deduction_usd': self.fed_tax_deduction,
             'fed_reg_income_taxes_usd': self.fed_reg_income_taxes,
             'amt_taxes_usd': self.amt_taxes,
+            'amt_base_income_usd': self.amt_base_income,
             'amt_taxable_income_usd': self.amt_taxable_income,
             'fed_random_taxes_usd': self.fed_random_taxes,
             'fed_medicare_taxes_usd': self.fed_medicare_taxes,
@@ -131,7 +128,7 @@ class Taxes(object):
             # Compute the tax contribution
             retval += (float(taxable) * float(rate))
 
-        return retval
+        return round(retval, 2)
 
     def state_taxes(self, m):
         return ( 0.0
@@ -152,7 +149,7 @@ class Taxes(object):
     def state_taxable_income(self, m):
         return ( 0.0
                  + m.reg_income_usd
-                 + m.rsu_income_usd
+                 + (m.shares_vested_rsu_n * m.ipo_price_usd )
                  + m.nso_income_usd
                  + m.iso_sales_income_usd
                  - m.state_tax_deduction_usd
@@ -198,8 +195,8 @@ class Taxes(object):
                  + 0.0 )
 
     def amt_exemption_usd(self, m):
-        i_crit = 1036800            # "phase-out threshold"
-        income = m.amt_base_income  # "amti"
+        i_crit = 1036800                # "phase-out threshold"
+        income = m.amt_base_income_usd  # "amti"
         base = 113400
 
         if income <= i_crit: return base
@@ -227,7 +224,7 @@ class Taxes(object):
     def fed_taxable_income(self, m):
         return ( 0.0
                  + m.reg_income_usd
-                 + m.rsu_income_usd
+                 + (m.shares_vested_rsu_n * m.ipo_price_usd )
                  + m.nso_income_usd
                  + m.iso_sales_income_usd
                  - m.fed_tax_deduction_usd

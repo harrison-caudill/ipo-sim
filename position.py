@@ -236,9 +236,6 @@ class Position(object):
             return sum([ getattr(m, fmt % ('_%s'%typ)) for typ in VEHICLES ])
         self.tribute[fmt % ('')] = __tmp
 
-    def shares_total(self, m):
-        return sum(list(map(lambda g: g.n, m.grants_lst)))
-
     def shares_sellable(self, m):
         return (0
                 + m.shares_sellable_restricted_n
