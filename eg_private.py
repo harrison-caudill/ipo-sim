@@ -42,7 +42,7 @@ GRANTS = [
     ]
 
 # Married filing jointly numbers
-fed_tax_table = {
+fed_married_joint = {
     0      : 0.1,
     19750  : 0.12,
     80250  : 0.22,
@@ -53,7 +53,7 @@ fed_tax_table = {
     }
 
 # Married filing jointly numbers
-state_tax_table = {
+ca_married = {
     0 : 0.01,
     17618 : 0.02,
     41766 : 0.04,
@@ -66,11 +66,26 @@ state_tax_table = {
     1999999 : 0.133
     }
 
+# california single
+ca_single = {
+    0 : 0.01,
+    8809 : 0.02,
+    20883 : 0.04,
+    32960 : 0.06,
+    45753 : 0.08,
+    57824 : 0.093,
+    295371 : 0.103,
+    354445 : 0.113,
+    590742 : 0.123,
+    1000000 : 0.133
+    }
+
+
 constants = {
 
     # Married filing jointly numbers
-    'fed_tax_table': fed_tax_table,
-    'state_tax_table': state_tax_table,
+    'fed_tax_table': fed_married_joint,
+    'state_tax_table': ca_married,
     'fed_std_deduction_usd': 24800,
     'amt_exemption_usd': 113400,
     'state_std_deduction_usd': 4537,
