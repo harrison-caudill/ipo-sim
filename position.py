@@ -33,7 +33,7 @@ def from_table(name,
                exercised=0,
                sold=0,
                strike_usd=0):
-    """Generate a Grant object from rows in Sharepoint.
+    """Generate a Grant object from rows in Shareworks.
 
     name:       Grant ID from sharepoint
     vehicle:    one of 'iso', 'nso', or 'rsu'
@@ -160,16 +160,18 @@ The following counts are available:
         periods = int(min(float((math.floor(mon / self.period_months))),
                           self.n_periods))
 
-        # Calculate the number of shares per vesting period
-        n_vesting = self.n_shares - self.n_cliff
+        # How many shares have a regular vesting cadence?
+        n_vesting = float(self.n_shares - self.n_cliff)
         if self.negative_cliff: n_vesting += self.n_cliff
-        n_shares = int(math.floor(n_vesting / float(self.n_periods)))
+
+        # Calculate the floating fraction of vested shares
+        frac_vested = float(periods) / float(self.n_periods)
 
         # Add that many shares each vesting period
         if periods >= self.n_periods:
             retval = self.n_shares
         else:
-            retval = periods * n_shares + self.n_cliff
+            retval = round(frac_vested * n_vesting + self.n_cliff, 0)
 
         # quick sanity check
         assert(retval >= self.exercised)
