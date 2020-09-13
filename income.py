@@ -18,6 +18,9 @@ class Income(object):
             'rem_grants_lst': self.rem_grants_lst,
             'rem_grants_dict': self.rem_grants_dict,
             'cleared_from_sale_usd': self.cleared_from_sale,
+            'shares_sold_nso_n': self.shares_sold_nso_n,
+            'shares_sold_iso_n': self.shares_sold_iso_n,
+            'shares_sold_rsu_n': self.shares_sold_rsu_n,
 
             # Sales Orders
             'sales_orders': [],
@@ -58,6 +61,21 @@ class Income(object):
         retval['cost'] = cost
         retval['end'] = end
         return retval
+
+    def shares_sold_rsu_n(self, m):
+        gdict = m.grants_dict
+        l = [ o for o in m.sales_orders if gdict[o['id']].vehicle == 'rsu' ]
+        return int(sum([o['qty'] for o in l]))
+
+    def shares_sold_iso_n(self, m):
+        gdict = m.grants_dict
+        l = [ o for o in m.sales_orders if gdict[o['id']].vehicle == 'iso' ]
+        return int(sum([o['qty'] for o in l]))
+
+    def shares_sold_nso_n(self, m):
+        gdict = m.grants_dict
+        l = [ o for o in m.sales_orders if gdict[o['id']].vehicle == 'nso' ]
+        return int(sum([o['qty'] for o in l]))
 
     def rem_grants_lst(self, m):
         d = m.rem_grants_dict
@@ -166,7 +184,8 @@ def sales_orders_rsu(m, price=None, **ignore):
 
     for g in m.grants_lst:
         if g.vehicle == 'rsu':
-            n = g.vested_unsold(m.query_date)
+            n = (g.vested(m.query_date)
+                 * (1.0 - m.shares_withheld_rsu_rate))
             retval.append({
                 'id': g.name,
                 'qty': n,

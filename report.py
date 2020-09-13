@@ -20,33 +20,34 @@ TAX_FMT = """%%T: Rate vs the taxable income
 %%A: Rate vs the ACTUAL (in your bank) income
 
 === State Taxes ===
-Taxable Income: %(state_taxable_income)s $
-Actual Income:  %(total_income)s $
-Reg Taxes:      %(var_state_reg)s
-SDI Taxes:      %(var_state_sdi)s
-State Taxes:    %(var_state_tot)s
-Cash Withheld:  %(var_state_with)s
-RSU Withheld:   %(var_state_rsu_with)s
-Outstanding:    %(var_state_out)s
+Taxable Income:     %(state_taxable_income)s $
+Actual Income:      %(total_income)s $
+Reg Taxes:          %(var_state_reg)s
+SDI Taxes:          %(var_state_sdi)s
+State Taxes:        %(var_state_tot)s
+Cash Withheld:      %(var_state_with)s
+RSU Withheld:       %(var_state_rsu_with)s
+Outstanding:        %(var_state_out)s
 
 === Federal Taxes ===
-Taxable Income: %(fed_taxable_income)s $
-Actual Income:  %(total_income)s $
-Reg Taxes:      %(var_fed_reg)s
-AMT Taxes:      %(var_fed_amt)s
-SS Taxes:       %(var_fed_ss)s
-Medicare Taxes: %(var_fed_med)s
-Federal Taxes:  %(var_fed_tot)s
-Cash Withheld:  %(var_fed_with)s
-RSU Withheld:   %(var_fed_rsu_with)s
-Outstanding:    %(var_fed_out)s
+Fed Taxable Income: %(fed_taxable_income)s $
+AMT Taxable Income: %(amt_taxable_income)s $
+Actual Income:      %(total_income)s $
+Reg Taxes:          %(var_fed_reg)s
+AMT Taxes:          %(var_fed_amt)s
+SS Taxes:           %(var_fed_ss)s
+Medicare Taxes:     %(var_fed_med)s
+Federal Taxes:      %(var_fed_tot)s
+Cash Withheld:      %(var_fed_with)s
+RSU Withheld:       %(var_fed_rsu_with)s
+Outstanding:        %(var_fed_out)s
 
 === Overall ===
-Actual Income:  %(total_income)s $
-State Taxes:    %(var_state_tot)s
-Federal Taxes:  %(var_fed_tot)s
-Total Taxes:    %(var_tot)s
-Outstanding:    %(var_tot_out)s
+Actual Income:      %(total_income)s $
+State Taxes:        %(var_state_tot)s
+Federal Taxes:      %(var_fed_tot)s
+Total Taxes:        %(var_tot)s
+Outstanding:        %(var_tot_out)s
 """
 
 
@@ -81,6 +82,7 @@ class Report(object):
         __a('state_out', m.state_outstanding_taxes_usd)
 
         args['fed_taxable_income'] = comma(m.fed_taxable_income_usd, dec=False)
+        args['amt_taxable_income'] = comma(m.amt_taxable_income_usd, dec=False)
         taxable_income = m.amt_taxable_income_usd
         __a('fed_amt', m.amt_taxes_usd)
         taxable_income = m.fed_taxable_income_usd

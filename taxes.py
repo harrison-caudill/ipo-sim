@@ -73,11 +73,15 @@ class Taxes(object):
             'rsu_fed_hold_rate': 0.22,
             'rsu_state_hold_rate': 0.1023,
             'shares_withheld_rsu_n': self.shares_withheld_rsu_n,
+            'shares_withheld_rsu_rate': self.shares_withheld_rsu_rate,
             'shares_withheld_rsu_fed_n': self.shares_withheld_rsu_fed_n,
             'shares_withheld_rsu_state_n': self.shares_withheld_rsu_state_n,
+            'shares_withheld_rsu_fed_rate': self.shares_withheld_rsu_fed_rate,
+            'shares_withheld_rsu_state_rate': self.shares_withheld_rsu_state_rate,
             'shares_withheld_rsu_fed_usd': self.shares_withheld_rsu_fed_usd,
             'shares_withheld_rsu_state_usd': self.shares_withheld_rsu_state_usd,
             'shares_withheld_rsu_usd': self.shares_withheld_rsu_usd,
+            'shares_available_rsu_n': self.shares_available_rsu_n,
 
             # Final outputs
             'tax_burden_usd': self.tax_burden,
@@ -156,12 +160,19 @@ class Taxes(object):
         return round(retval, 2)
 
     def shares_withheld_rsu_state_n(self, m):
-        return int(math.ceil(m.shares_vested_rsu_n * m.rsu_state_hold_rate))
+        rate = m.shares_withheld_rsu_state_rate
+        return int(math.ceil(m.shares_vested_rsu_eoy_n * rate))
+
+    def shares_withheld_rsu_rate(self, m):
+        return m.shares_withheld_rsu_state_rate+m.shares_withheld_rsu_fed_rate
+
+    def shares_withheld_rsu_state_rate(self, m):
+        return m.rsu_state_hold_rate
 
     def shares_withheld_rsu_n(self, m):
         return m.shares_withheld_rsu_state_n + m.shares_withheld_rsu_fed_n
 
-    def shares_withheld_rsu_fed_n(self, m):
+    def shares_withheld_rsu_fed_rate(self, m):
         # FIXME: Assumes you have exceeded thresholds for the other
         #        random things (ss, sdi, foo, bar).  Drop an assert at
         #        least
@@ -172,7 +183,11 @@ class Taxes(object):
                  + m.rsu_fed_hold_rate
                  + med_val
                  + 0.0 )
-        return int(math.ceil(m.shares_vested_rsu_n * rate))
+        return rate
+
+    def shares_withheld_rsu_fed_n(self, m):
+        rate = m.shares_withheld_rsu_fed_rate
+        return int(math.ceil(m.shares_vested_rsu_eoy_n * rate))
 
     def shares_withheld_rsu_usd(self, m):
         return m.shares_withheld_rsu_n * m.ipo_price_usd
@@ -182,6 +197,9 @@ class Taxes(object):
 
     def shares_withheld_rsu_state_usd(self, m):
         return m.shares_withheld_rsu_state_n * m.ipo_price_usd
+
+    def shares_available_rsu_n(self, m):
+        return m.shares_vested_unsold_rsu_n - m.shares_withheld_rsu_n
 
     def state_taxes(self, m):
         return ( 0.0
@@ -202,7 +220,7 @@ class Taxes(object):
     def state_taxable_income(self, m):
         return ( 0.0
                  + m.reg_income_usd
-                 + (m.shares_vested_rsu_n * m.ipo_price_usd )
+                 + (m.shares_vested_rsu_eoy_n * m.ipo_price_usd )
                  + m.nso_income_usd
                  + m.iso_sales_income_usd
                  - m.state_tax_deduction_usd
@@ -229,6 +247,7 @@ class Taxes(object):
         return self.apply_tax_table(v, tab)
 
     def amt_taxes(self, m):
+        # FIXME: Not sure if this is right for amti >= 1e6
         v = m.amt_taxable_income_usd
         tab = m.amt_tax_table
         return self.apply_tax_table(v, tab)

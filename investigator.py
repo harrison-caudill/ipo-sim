@@ -30,8 +30,16 @@ class Investigator(object):
 
     def question_1(self):
         self._qst(1, "How many RSUs will be automatically withheld?")
+
+        print(
+            """These numbers are for shares vesting throughout the
+year, since those will affect taxes as well.  Shares
+available on the big day will NOT be affected by RSU
+withholdings that will happen afterwards.
+""")
+
         held = m.shares_withheld_rsu_n
-        vested = m.shares_vested_rsu_n
+        vested = m.shares_vested_rsu_eoy_n
         rate = round(100.0 * held / float(vested), 1)
         print("Withholding:   %s / %s ( %5.1f %% )" % (
             comma(held, dec=False, white=False),
@@ -62,7 +70,30 @@ class Investigator(object):
 
         self.m.override(self.e.sales_orders, orders)
         self.rep.print_grants()
-        print("We Clear:  $ %s"%comma(m.cleared_from_sale_usd, dec=False, white=False))
+        self.rep.print_tax_summary()
+        print()
+        print("Share Price:  $ %.2f" % m.ipo_price_usd)
+        print("NSOs Sold:      %s" % comma(m.shares_sold_nso_n,
+                                           dec=False, white=False))
+        print("NSO Income:   $ %s" % comma(m.nso_income_usd,
+                                           dec=False, white=False))
+        print("ISOs Sold:      %s" % comma(m.shares_sold_iso_n,
+                                           dec=False, white=False))
+        print("ISO Income:   $ %s" % comma(m.iso_sales_income_usd,
+                                           dec=False, white=False))
+        print("RSUs Sold:      %s" % comma(m.shares_sold_rsu_n,
+                                           dec=False, white=False))
+        print("RSU Income:   $ %s" % comma(m.rsu_income_usd,
+                                           dec=False, white=False))
+        print("Sale Income:  $ %s" % comma(m.rsu_income_usd
+                                           + m.nso_income_usd
+                                           + m.iso_sales_income_usd,
+                                          dec=False, white=False))
+        print("Owed:         $ %s" % comma(m.outstanding_taxes_usd,
+                                          dec=False, white=False))
+        print("We Clear:     $ %s"%comma(m.cleared_from_sale_usd, dec=False, white=False))
+        print()
+        print("This is AFTER paying all outstanding taxes.")
 
     def question_5(self):
         self._qst(5, "How much cash if we sell the RSUs?")

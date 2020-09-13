@@ -264,9 +264,6 @@ class Position(object):
         self._add_summation_nodes('shares_total%s_n',
                                   'n_shares')
 
-        self._add_summation_nodes('shares_sold%s_n',
-                                  'sold')
-
         self._add_summation_nodes('shares_exercised%s_n',
                                   'exercised')
 
@@ -298,6 +295,10 @@ class Position(object):
                                   'held',
                                   call=True)
 
+        self._add_summation_nodes('shares_previously_sold%s_n',
+                                  'sold',
+                                  call=False)
+
         self._add_summation_nodes('exercise_cost_outstanding%s_usd',
                                   'outstanding_cost',
                                   call=True)
@@ -308,10 +309,6 @@ class Position(object):
 
         self._add_summation_nodes('rem_shares_total%s_n',
                                   'n_shares',
-                                  rem=True)
-
-        self._add_summation_nodes('rem_shares_sold%s_n',
-                                  'sold',
                                   rem=True)
 
         self._add_summation_nodes('rem_shares_exercised%s_n',
@@ -346,6 +343,11 @@ class Position(object):
         self._add_summation_nodes('rem_shares_held%s_n',
                                   'held',
                                   call=True,
+                                  rem=True)
+
+        self._add_summation_nodes('shares_previously_sold%s_n',
+                                  'sold',
+                                  call=False,
                                   rem=True)
 
         self._add_summation_nodes('rem_exercise_cost_outstanding%s_usd',
@@ -409,7 +411,7 @@ class Position(object):
     def end_of_year(self, m):
         d = parse_date(m.query_date)
         yr = d.year
-        mon = d.month
+        mon = 12
         day = calendar.monthrange(d.year, d.month)[-1]
         return datetime.datetime(year=yr, month=mon, day=day)
 
@@ -423,11 +425,14 @@ class Position(object):
                 + 0 )
 
     def shares_sellable_restricted(self, m):
-        n_unsold = ( 0
-                     + (m.shares_total_iso_n - m.shares_sold_iso_n)
-                     + (m.shares_total_nso_n - m.shares_sold_nso_n)
-                     + 0 )
-        max_shares = int(math.floor(n_unsold * m.max_sellable_restricted_frac))
+        n_considered = ( 0
+                         + m.shares_total_nso_n
+                         - m.shares_previously_sold_nso_n
+                         + m.shares_total_iso_n
+                         - m.shares_previously_sold_iso_n
+                         + 0 )
+        base = n_considered * m.max_sellable_restricted_frac
+        max_shares = int(math.floor(base))
 
         available = ( 0
                       + m.shares_vested_outstanding_iso_n
