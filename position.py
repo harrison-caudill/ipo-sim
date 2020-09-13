@@ -35,9 +35,12 @@ def from_table(name,
                strike_usd=0):
     """Generate a Grant object from rows in Shareworks.
 
-    name:       Grant ID from sharepoint
+    Vesting schedules in Shareworks can be found by selecting the hyperlinked
+    Grant Name under Portfolio > Stock Options and Awards.
+
+    name:       Grant ID from Shareworks
     vehicle:    one of 'iso', 'nso', or 'rsu'
-    first_*:    The date (mm/dd/yy) and shares vested from the first row in SP
+    first_*:    The date (mm/dd/yy) and shares vested from the first row in SW
     second_*:   Ditto, but second row
     last_*:     Ditto, but last row
     n_shares:   Total number of shares

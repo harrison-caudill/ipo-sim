@@ -33,7 +33,7 @@ an environment up and running with python 3.  There is plenty of
 4. Edit `private.py` to put in your grants, income, withholdings, etc.
 The file itself has all the documentation you need to find that.  The
 grants are tricky, but there are convenience functions to help you
-port from SharePoint.
+port from Shareworks.
 
 5. `python investigator.py`
 

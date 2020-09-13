@@ -39,7 +39,7 @@ GRANTS = [
           strike_usd=2,
           start='1/1/20',
           n_periods=1,
-          n=0xdeadbeef,
+          n_shares=0xdeadbeef,
           exercised=0,
           sold=0,
           period_months=1),
@@ -50,7 +50,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/20',
           n_periods=12,
-          n=0xcafebabe,
+          n_shares=0xcafebabe,
           exercised=0,
           sold=0,
           period_months=1),
@@ -123,7 +123,7 @@ __constants = {
     'state_std_deduction_usd': 4537,
 
     # This price determines things like your tax burden from RSUs
-    # vesting.  It's also the defaut sales price for any sales orders
+    # vesting.  It's also the default sales price for any sales orders
     # you place.
     'ipo_price_usd': 12,
 
