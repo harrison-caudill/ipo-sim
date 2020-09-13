@@ -83,7 +83,6 @@ class Taxes(object):
             'shares_withheld_rsu_fed_usd': self.shares_withheld_rsu_fed_usd,
             'shares_withheld_rsu_state_usd': self.shares_withheld_rsu_state_usd,
             'shares_withheld_rsu_usd': self.shares_withheld_rsu_usd,
-            'shares_available_rsu_n': self.shares_available_rsu_n,
 
             # Final outputs
             'tax_burden_usd': self.tax_burden,
@@ -200,9 +199,6 @@ class Taxes(object):
     def shares_withheld_rsu_state_usd(self, m):
         return m.shares_withheld_rsu_state_n * m.ipo_price_usd
 
-    def shares_available_rsu_n(self, m):
-        return m.shares_vested_unsold_rsu_n - m.shares_withheld_rsu_n
-
     def state_taxes(self, m):
         return ( 0.0
                  + m.state_reg_income_taxes_usd
@@ -285,10 +281,13 @@ class Taxes(object):
 
     def amt_base_income(self, m):
         return ( 0.0
-                 + m.fed_taxable_income_usd
-                 + m.fed_tax_deduction_usd
-                 + m.iso_exercise_income_usd
+                 + m.reg_income_usd
+                 + m.ext_amt_income_usd
+                 + m.rsu_vesting_taxable_income_usd
+                 + m.nso_income_usd
+                 + m.iso_sales_income_usd
                  - m.tax_exempt_contributions_usd
+                 + m.iso_exercise_income_usd
                  + 0.0 )
 
     def amt_taxable_income(self, m):

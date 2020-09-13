@@ -31,18 +31,15 @@ class Income(object):
 
     def shares_available_rsu_n(self, m):
         return (m.shares_vested_unsold_rsu_n
-                - (m.shares_vested_rsu_n
-                   * (1.0 - m.shares_withheld_rsu_rate)))
+                * (1.0 - m.shares_withheld_rsu_rate))
 
     def shares_available_nso_n(self, m):
         return (m.shares_vested_unsold_nso_n
-                - (m.shares_vested_nso_n
-                   * (1.0 - m.shares_withheld_nso_rate)))
+                * (1.0 - m.shares_withheld_nso_rate))
 
     def shares_available_iso_n(self, m):
         return (m.shares_vested_unsold_iso_n
-                - (m.shares_vested_iso_n
-                   * (1.0 - m.shares_withheld_iso_rate)))
+                * (1.0 - m.shares_withheld_iso_rate))
 
     def sales_simulation(self, m):
         cost = 0.0

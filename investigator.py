@@ -110,18 +110,20 @@ withholdings that will happen afterwards.
             strike = g.strike_usd
 
         dollars = 0
-        for i in range(m.shares_vested_iso_n):
-            m.override(self.e.iso_exercise_income_usd, i*m.ipo_price_usd*10)
+        amti_gap = 0
+        n_shares = 0
+        for i in range(0, int(m.shares_available_iso_n)+10, 10):
+            amti_gap = i * (m.ipo_price_usd - strike)
+            m.override(self.e.iso_exercise_income_usd, amti_gap)
             if m.amt_taxes_usd > m.fed_reg_income_taxes_usd:
-                dollars = i * m.ipo_price_usd*10
+                dollars = amti_gap
+                n_shares = i
                 break
         m.override(self.e.iso_exercise_income_usd, 0)
 
-        # it'll cost dollars to hit amt, how many shares is that?
-        n = int(dollars / (m.ipo_price_usd - strike))
-        cost = n * strike
+        cost = n_shares * strike
 
-        return (dollars, n, strike, cost)
+        return (dollars, n_shares, strike, cost)
 
     def question_6(self):
         self._qst(6, "If we sell it all, how many ISOs can we buy w/o AMT?")

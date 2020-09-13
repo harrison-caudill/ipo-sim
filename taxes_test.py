@@ -42,6 +42,7 @@ def model():
                               'palantir_fsa_usd': 0,
                               'palantir_drca_usd': 0,
                               'iso_exercise_income_usd': 0,
+                              'ext_amt_income_usd': 0,
                               'reg_income_usd': 0,
                               'ipo_price_usd': 1,
                               'fed_std_deduction_usd': 1,
@@ -223,6 +224,7 @@ class TestTaxes(object):
             e.shares_withheld_rsu_usd,
             e.tax_exempt_contributions_usd,
             e.amt_exemption_usd,
+            e.ext_amt_income_usd,
             ]:
             m.override(node, 100)
 
@@ -238,6 +240,27 @@ class TestTaxes(object):
         assert abs(0.0
                    + m.amt_taxable_income_usd
                    - 1
+                   + 0.0) < 1e-4
+
+    def test_amt_base_income(self, model):
+        m = model
+        e = m.enum
+        self.set_all_income(m)
+
+        m.override(e.reg_income_usd, 1)
+        m.override(e.ext_amt_income_usd, 1)
+        m.override(e.rsu_vesting_taxable_income_usd, 1)
+        m.override(e.nso_income_usd, 1)
+        m.override(e.iso_sales_income_usd, 1)
+        m.override(e.iso_exercise_income_usd, 1)
+
+        m.override(e.tax_exempt_contributions_usd, 1)
+
+        m.revert(e.amt_base_income_usd)
+
+        assert abs(0.0
+                   + m.amt_base_income_usd
+                   - 5
                    + 0.0) < 1e-4
 
     def test_fed_random_taxes_usd(self, model):
