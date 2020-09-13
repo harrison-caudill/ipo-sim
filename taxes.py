@@ -60,6 +60,12 @@ class Taxes(object):
             'state_tax_deduction_usd': self.state_tax_deduction,
             'state_itemized_deductions_usd': self.state_itemized_deductions,
 
+            # RSU complexity
+            'rsu_fed_hold_rate': 0.22,
+            'rsu_state_hold_rate': 0.1023,
+            'shares_withheld_rsu_n': self.rsu_withheld,
+            'shares_withheld_rsu_usd': self.rsu_withheld_usd,
+
             # Final output: the amount of dollars paid
             'tax_burden_usd': self.tax_burden,
 
@@ -99,6 +105,23 @@ class Taxes(object):
             retval += (float(taxable) * float(rate))
 
         return round(retval, 2)
+
+    def rsu_withheld(self, m):
+        # FIXME: Assumes you have exceeded thresholds for the other
+        #        random things (ss, sdi, foo, bar).  Drop an assert at
+        #        least
+        # FIXME: Unit Test
+        mtab = m.medicare_tax_table
+        med_val = max([mtab[k] for k in mtab.keys()])
+        rate = ( 0.0
+                 + m.rsu_fed_hold_rate
+                 + m.rsu_state_hold_rate
+                 + med_val
+                 + 0.0 )
+        return int(math.ceil(m.shares_vested_rsu_n * rate))
+
+    def rsu_withheld_usd(self, m):
+        return m.shares_withheld_rsu_n * m.ipo_price_usd
 
     def state_taxes(self, m):
         return ( 0.0

@@ -16,8 +16,10 @@ class Report(object):
     def __init__(self, m):
         self.m = m
 
-    def _vs(self, v):
-        rate = round(v / float(self.m.total_income_usd), 2)
+    def _vs(self, v, income=None):
+        if not income:
+            income = self.m.total_income_usd
+        rate = round(v / float(income), 2)
         return (comma(v), '%5.1f %%' % (rate*100.0))
 
     def print_tax_summary(self):
@@ -50,7 +52,8 @@ class Report(object):
         print("Total Income:   %s" % comma(m.total_income_usd))
         print("State Taxes:    %s (%s)" % self._vs(m.state_taxes_usd))
         print("Federal Taxes:  %s (%s)" % self._vs(m.fed_taxes_usd))
-        print("Total Taxes:    %s (%s)" % self._vs(m.tax_burden_usd))
+        print("Total Taxes:    %s (%s of income)" % self._vs(m.tax_burden_usd))
+        print("Total Taxes:    %s (%s of taxable)" % self._vs(m.tax_burden_usd, income=m.fed_taxable_income_usd))
         owed = ( 0.0
                  + m.tax_burden_usd
                  - m.fed_withheld_usd

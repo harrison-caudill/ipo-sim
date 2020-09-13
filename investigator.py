@@ -11,25 +11,11 @@ import private
 
 
 class Investigator(object):
-    """ Question we want to ask:
-
- 1. What is the minimum/automatic number of withheld RSUs?
-
- 2. What is the remaining RSU tax burden (in dollars)?
-
- 3. How many RSUs must be sold on day 1 to cover the RSU tax burden?
-
- 4. If we sold everything we could, how much cash would we clear?
-
- 5. If we sold all RSUs, and max number of NSOs, what percentage of
- full exercise price for all ISOs could be achieved without hitting
- AMT? (i.e. assume they're all priced the same)
-
- 6. For a range of FMVs, graph 6
-"""
+    """Executes a number of queries against the financial model."""
 
     def __init__(self, model):
         self.m = model
+        self.e = model.enum
 
     def _qst(self, num, msg):
         print()
@@ -39,51 +25,6 @@ class Investigator(object):
         print('/%s/'%('*'*78))
         print()
         print()
-
-
-    def sell_it_all(self, m):
-        """Place sell orders for all shares possible
-
-        Start with the RSUs, then the NSOs, then the ISOs
-        """
-        remaining_restricted = m.shares_sellable_restricted_n
-        orders = {}
-
-        for g in m.grants_lst:
-            if g.vehicle == 'rsu':
-                n = g.vested(m.query_date) - g.sold
-                orders[g.name] = {'qty':n}
-
-        for g in m.grants_lst:
-            if g.vehicle == 'nso':
-                n = g.vested(m.query_date) - g.sold
-                n = min(remaining_restricted,
-                        g.vested(m.query_date) - g.sold)
-                remaining_restricted -= n
-                orders[g.name] = {'qty':n}
-
-        for g in m.grants_lst:
-            if g.vehicle == 'iso':
-                n = g.vested(m.query_date) - g.sold
-                n = min(remaining_restricted,
-                        g.vested(m.query_date) - g.sold)
-                remaining_restricted -= n
-                orders[g.name] = {'qty':n}
-
-        e = m.enum
-        m.override(e.sales_orders, orders)
-
-    def sell_rsu(self, m):
-        remaining_restricted = m.shares_sellable_restricted_n
-        orders = {}
-        for g in m.grants_lst:
-            if g.vehicle == 'rsu':
-                n = g.vested(m.query_date) - g.sold
-            else:
-                n = 0
-            orders[g.name] = {'qty':n}
-        e = m.enum
-        m.override(e.sales_orders, orders)
 
     def question_1(self):
         self._qst(1, "How many RSUs will be automatically withheld?")
@@ -117,7 +58,10 @@ class Investigator(object):
 
     def question_4(self):
         self._qst(4, "How much cash if we sell it all (start with NSO)?")
-        self.sell_it_all(m)
+        orders = myMeager.sales_orders_all(self.m)
+        self.m.override(self.e.sales_orders, orders)
+        rep = explosive.Report(m)
+        rep.print_grants()
         cleared = ( 0.0
                     + m.total_income_usd
                     - m.reg_income_usd
@@ -128,7 +72,8 @@ class Investigator(object):
 
     def question_5(self):
         self._qst(5, "How much cash if we sell the RSUs?")
-        self.sell_rsu(m)
+        orders = myMeager.sales_orders_rsu(self.m)
+        self.m.override(self.e.sales_orders, orders)
         cleared = ( 0.0
                     + m.total_income_usd
                     - m.reg_income_usd
@@ -139,9 +84,11 @@ class Investigator(object):
 
     def question_6(self):
         self._qst(6, "If we sell it all, how many ISOs can we buy w/o AMT?")
-        self.sell_it_all(m)
+        orders = myMeager.sales_orders_all(self.m)
+        self.m.override(self.e.sales_orders, orders)
 
         e = m.enum
+        dollars = 0
         for i in range(m.shares_vested_iso_n):
             m.override(e.iso_exercise_income_usd, i*m.ipo_price_usd*10)
             if m.amt_taxes_usd > m.fed_reg_income_taxes_usd:
@@ -170,9 +117,11 @@ class Investigator(object):
 
     def question_7(self):
         self._qst(7, "If we sell all RSUs, how many ISOs can we buy w/o AMT?")
-        self.sell_rsu(m)
+        orders = myMeager.sales_orders_rsu(self.m)
+        self.m.override(self.e.sales_orders, orders)
 
         e = m.enum
+        dollars = 0
         for i in range(m.shares_vested_iso_n):
             m.override(e.iso_exercise_income_usd, i*m.ipo_price_usd*10)
             if m.amt_taxes_usd > m.fed_reg_income_taxes_usd:
@@ -199,12 +148,9 @@ class Investigator(object):
         print("Exercise Cost:   %s" % explosive.comma(float(cost)))
         print("Cash Cleared:    %s" % explosive.comma(float(cleared)))
         print("Cash Remaining:  %s" % explosive.comma(float(remaining)))
-        print()
-
-    def question_8(self):
-        self._qst(8, "What does our remaining position look like?")
         rep = explosive.Report(m)
         rep.print_grants()
+        print()
 
     def go(self):
         self.question_1()
@@ -214,9 +160,8 @@ class Investigator(object):
         self.question_5()
         self.question_6()
         self.question_7()
-        self.question_8()
-        
+
 if __name__ == '__main__':
     m = private.MODEL
-    dix = Investigator(m)
-    dix.go()
+    dixon_hill = Investigator(m)
+    dixon_hill.go()

@@ -10,14 +10,43 @@ import position as anAwkward
 
 @pytest.fixture
 def model():
+    fed_married_joint = {
+        0      : 0.1,
+        19750  : 0.12,
+        80250  : 0.22,
+        171050 : 0.24,
+        326600 : 0.32,
+        414700 : 0.35,
+        622050 : 0.37
+        }
+
+    ca_married = {
+        0 : 0.01,
+        17618 : 0.02,
+        41766 : 0.04,
+        65920 : 0.06,
+        91506 : 0.08,
+        115648 : 0.093,
+        590746 : 0.103,
+        708890 : 0.113,
+        1181484 : 0.123,
+        1999999 : 0.133
+        }
+
     return pylink.DAGModel([deathAnd.Taxes(),
                             anAwkward.Position([]),
                             myMeager.Income(),],
                            **{'palantir_401k_usd': 0,
+                              'fed_tax_table': fed_married_joint,
+                              'state_tax_table': ca_married,
                               'palantir_fsa_usd': 0,
                               'palantir_drca_usd': 0,
+                              'iso_exercise_income_usd': 0,
                               'reg_income_usd': 0,
                               'ipo_price_usd': 1,
+                              'fed_std_deduction_usd': 1,
+                              'amt_exemption_usd': 1,
+                              'state_std_deduction_usd': 1,
                               'query_date': '1/10/10',
                               })
 
@@ -194,6 +223,13 @@ class TestTaxes(object):
         m.override(e.iso_sales_income_usd, 1)
         m.override(e.iso_exercise_income_usd, 1)
         m.override(e.tax_exempt_contributions_usd, 1)
+        m.override(e.amt_exemption_usd, 100)
+
+        m.override(e.palantir_fsa_usd, 100)
+        m.override(e.palantir_drca_usd, 100)
+        m.override(e.ipo_price_usd, 100)
+        m.override(e.fed_std_deduction_usd, 100)
+        m.override(e.state_std_deduction_usd, 100)
 
         assert abs(0.0
                    + m.amt_taxable_income_usd

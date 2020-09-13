@@ -18,7 +18,10 @@ def parse_date(d):
 
 
 def mon_diff(start, end):
-    return 12*(end.year - start.year) + (end.month - start.month)
+    retval = 12*(end.year - start.year) + (end.month - start.month)
+    if start.day > end.day: retval -= 1
+    retval = max(retval, 0)
+    return retval
 
 
 def from_table(name,
@@ -151,12 +154,7 @@ The following counts are available:
             return 0
 
         # number of months as measured by a banker
-        mon = ( 0
-                + 12*(on.year - self.start.year)
-                + (on.month - self.start.month)
-                + 0 )
-        if self.start.day > on.day: mon -= 1
-        mon = max(mon, 0)
+        mon = mon_diff(self.start, on)
 
         # how many vesting periods will have been completed at this time?
         periods = int(min(float((math.floor(mon / self.period_months))),
@@ -209,12 +207,6 @@ The following counts are available:
         If you would like to exercise/sell instead of selling held
         stock, then you can set prefer_exercise to True (default).  If
         you'd prefer to sell any held stock first, set to logic low.
-
-        WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
-
-        WARNING      You MUST run model.clear_cache() if update=True    WARNING
-
-        WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING
         """
 
         vested = self.vested(on)
@@ -265,31 +257,100 @@ class Position(object):
             'shares_sellable_restricted_n': self.shares_sellable_restricted,
             }
 
-        self._helper_x('shares_total%s_n', 'n_shares')
-        self._helper_x('shares_sold%s_n', 'sold')
-        self._helper_x('shares_exercised%s_n', 'exercised')
-        self._helper_x('shares_vested%s_n', 'vested', *['query_date'])
-        self._helper_x('shares_unvested%s_n', 'unvested', *['query_date'])
-        self._helper_x('shares_vested_unsold%s_n', 'vested_unsold', *['query_date'])
-        self._helper_x('shares_vested_outstanding%s_n', 'vested_outstanding', *['query_date'])
-        self._helper_x('shares_outstanding%s_n', 'outstanding', call=True)
-        self._helper_x('shares_held%s_n', 'held', call=True)
-        self._helper_x('exercise_cost_outstanding%s_usd', 'outstanding_cost', call=True)
-        self._helper_x('exercise_cost_vested_outstanding%s_usd', 'vested_outstanding_cost', *['query_date'])
+        self._add_summation_nodes('shares_total%s_n',
+                                  'n_shares')
 
-        self._helper_x('rem_shares_total%s_n', 'n_shares', rem=True)
-        self._helper_x('rem_shares_sold%s_n', 'sold', rem=True)
-        self._helper_x('rem_shares_exercised%s_n', 'exercised', rem=True)
-        self._helper_x('rem_shares_vested%s_n', 'vested', *['query_date'], rem=True)
-        self._helper_x('rem_shares_unvested%s_n', 'unvested', *['query_date'], rem=True)
-        self._helper_x('rem_shares_vested_unsold%s_n', 'vested_unsold', *['query_date'], rem=True)
-        self._helper_x('rem_shares_vested_outstanding%s_n', 'vested_outstanding', *['query_date'], rem=True)
-        self._helper_x('rem_shares_outstanding%s_n', 'outstanding', call=True, rem=True)
-        self._helper_x('rem_shares_held%s_n', 'held', call=True, rem=True)
-        self._helper_x('rem_exercise_cost_outstanding%s_usd', 'outstanding_cost', call=True, rem=True)
-        self._helper_x('rem_exercise_cost_vested_outstanding%s_usd', 'vested_outstanding_cost', *['query_date'], rem=True)
+        self._add_summation_nodes('shares_sold%s_n',
+                                  'sold')
 
-    def _helper_x(self, fmt, field, *args, call=False, rem=False):
+        self._add_summation_nodes('shares_exercised%s_n',
+                                  'exercised')
+
+        self._add_summation_nodes('shares_vested%s_n',
+                                  'vested',
+                                  *['query_date'])
+
+        self._add_summation_nodes('shares_unvested%s_n',
+                                  'unvested',
+                                  *['query_date'])
+
+        self._add_summation_nodes('shares_vested_unsold%s_n',
+                                  'vested_unsold',
+                                  *['query_date'])
+
+        self._add_summation_nodes('shares_vested_outstanding%s_n',
+                                  'vested_outstanding',
+                                  *['query_date'])
+
+        self._add_summation_nodes('shares_outstanding%s_n',
+                                  'outstanding',
+                                  call=True)
+
+        self._add_summation_nodes('shares_held%s_n',
+                                  'held',
+                                  call=True)
+
+        self._add_summation_nodes('exercise_cost_outstanding%s_usd',
+                                  'outstanding_cost',
+                                  call=True)
+
+        self._add_summation_nodes('exercise_cost_vested_outstanding%s_usd',
+                                  'vested_outstanding_cost',
+                                  *['query_date'])
+
+        self._add_summation_nodes('rem_shares_total%s_n',
+                                  'n_shares',
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_sold%s_n',
+                                  'sold',
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_exercised%s_n',
+                                  'exercised',
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_vested%s_n',
+                                  'vested',
+                                  *['query_date'],
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_unvested%s_n',
+                                  'unvested',
+                                  *['query_date'],
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_vested_unsold%s_n',
+                                  'vested_unsold',
+                                  *['query_date'],
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_vested_outstanding%s_n',
+                                  'vested_outstanding',
+                                  *['query_date'],
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_outstanding%s_n',
+                                  'outstanding',
+                                  call=True,
+                                  rem=True)
+
+        self._add_summation_nodes('rem_shares_held%s_n',
+                                  'held',
+                                  call=True,
+                                  rem=True)
+
+        self._add_summation_nodes('rem_exercise_cost_outstanding%s_usd',
+                                  'outstanding_cost',
+                                  call=True,
+                                  rem=True)
+
+        self._add_summation_nodes('rem_exercise_cost_vested_outstanding%s_usd',
+                                  'vested_outstanding_cost',
+                                  *['query_date'],
+                                  rem=True)
+
+    def _add_summation_nodes(self, fmt, field, *args, call=False, rem=False):
         """Generate summation nodes for counting types of stock.
 
         OK, this method is complicated.  Because of python's
@@ -297,10 +358,17 @@ class Position(object):
         objects, we use functools to create a curried outer function
         which returns the callable object we actually want to register.
 
-        the fmt is the name of the node with a single %s which will be
+        The fmt is the name of the node with a single %s which will be
         given the vehicle
 
-        field is the attribute to reference in the grant object
+        field is the attribute to reference in the grant object, which
+        can be callable (as indicated either with the call kwarg, or
+        by including a non-zero number of *args).
+
+        Since most of these will need to be duplicated for reviewing
+        the equity position after the sales are processed, we include
+        a convenience boolean for prepending 'rem_' and referencing
+        the post-sale list of grant objects.
         """
         if len(args): call=True
 
