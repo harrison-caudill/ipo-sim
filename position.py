@@ -255,6 +255,8 @@ class Position(object):
 
             'shares_sellable_n': self.shares_sellable,
             'shares_sellable_restricted_n': self.shares_sellable_restricted,
+            'end_of_year': self.end_of_year,
+            'shares_vested_rsu_usd': self.shares_vested_rsu_usd,
             }
 
         self._add_summation_nodes('shares_total%s_n',
@@ -269,6 +271,10 @@ class Position(object):
         self._add_summation_nodes('shares_vested%s_n',
                                   'vested',
                                   *['query_date'])
+
+        self._add_summation_nodes('shares_vested%s_eoy_n',
+                                  'vested',
+                                  *['end_of_year'])
 
         self._add_summation_nodes('shares_unvested%s_n',
                                   'unvested',
@@ -356,7 +362,13 @@ class Position(object):
         OK, this method is complicated.  Because of python's
         late-bindings, and the need to generate and register callable
         objects, we use functools to create a curried outer function
-        which returns the callable object we actually want to register.
+        which returns the callable object we actually want to register
+        when executed.  The outer object takes in one parameter (the
+        vehicle) and generates a callable which takes in one parameter
+        (the model).  Because the vehicle is what needs to be curried,
+        we use partial on the outer, not the inner.  We then just
+        immediately call the outer function and register the resulting
+        inner function as the callback.
 
         The fmt is the name of the node with a single %s which will be
         given the vehicle
@@ -391,6 +403,16 @@ class Position(object):
         def __tmp(m):
             return sum([ getattr(m, fmt % ('_%s'%typ)) for typ in VEHICLES ])
         self.tribute[fmt % ('')] = __tmp
+
+    def end_of_year(self, m):
+        d = parse_date(m.query_date)
+        yr = d.year
+        mon = d.month
+        day = calendar.monthrange(d.year, d.month)[-1]
+        return datetime.datetime(year=yr, month=mon, day=day)
+
+    def shares_vested_rsu_usd(self, m):
+        return m.shares_vested_rsu_n * m.ipo_price_usd
 
     def shares_sellable(self, m):
         return (0

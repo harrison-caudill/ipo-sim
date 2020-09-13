@@ -109,23 +109,6 @@ class TestTaxes(object):
         m.override(e.amt_taxes_usd, 150)
         assert abs(m.fed_taxes_usd - 200) < 1e-4
 
-    def test_fed_taxable_income_usd(self, model):
-        m = model
-        e = m.enum
-
-        m.override(e.reg_income_usd, 1)
-        m.override(e.nso_income_usd, 1)
-        m.override(e.iso_sales_income_usd, 1)
-        m.override(e.shares_vested_rsu_n, 1)
-        m.override(e.ipo_price_usd, 1)
-        m.override(e.fed_tax_deduction_usd, 1)
-        m.override(e.tax_exempt_contributions_usd, 1)
-
-        assert abs(0.0
-                   + m.fed_taxable_income_usd
-                   - 2
-                   + 0.0) < 1e-4
-
     def test_fed_tax_deduction_usd(self, model):
         m = model
         e = m.enum
@@ -213,64 +196,78 @@ class TestTaxes(object):
         taxes = m.taxes_obj.apply_tax_table(money, table)
         assert taxes == m.amt_taxes_usd
 
+    def set_all_income(self, m):
+        """Set everything to 100.
+
+        That way we can watch for irrelevant input being considered.
+        """
+        e = m.enum
+        for node in [
+            e.fed_taxable_income_usd,
+            e.fed_tax_deduction_usd,
+            e.amt_base_income_usd,
+            e.amt_taxable_income_usd,
+            e.fed_random_taxes_usd,
+            e.fed_itemized_deductions_usd,
+            e.fed_reg_income_taxes_usd,
+            e.rsu_vesting_taxable_income_usd,
+            e.state_reg_income_taxes_usd,
+            e.state_taxable_income_usd,
+            e.state_tax_deduction_usd,
+            e.state_itemized_deductions_usd,
+            e.shares_withheld_rsu_n,
+            e.shares_withheld_rsu_fed_n,
+            e.shares_withheld_rsu_state_n,
+            e.shares_withheld_rsu_fed_usd,
+            e.shares_withheld_rsu_state_usd,
+            e.shares_withheld_rsu_usd,
+            e.tax_exempt_contributions_usd,
+            e.amt_exemption_usd,
+            ]:
+            m.override(node, 100)
+
     def test_amt_taxable_income_usd(self, model):
         m = model
         e = m.enum
+        self.set_all_income(m)
 
-        m.override(e.reg_income_usd, 1)
-        m.override(e.rsu_income_usd, 1)
-        m.override(e.nso_income_usd, 1)
-        m.override(e.iso_sales_income_usd, 1)
-        m.override(e.iso_exercise_income_usd, 1)
-        m.override(e.tax_exempt_contributions_usd, 1)
-        m.override(e.amt_exemption_usd, 100)
-
-        m.override(e.palantir_fsa_usd, 100)
-        m.override(e.palantir_drca_usd, 100)
-        m.override(e.ipo_price_usd, 100)
-        m.override(e.fed_std_deduction_usd, 100)
-        m.override(e.state_std_deduction_usd, 100)
-
-        assert abs(0.0
-                   + m.amt_taxable_income_usd
-                   - 0
-                   + 0.0) < 1e-4
-
+        m.override(e.amt_base_income_usd, 2)
         m.override(e.amt_exemption_usd, 1)
+        m.revert(e.amt_taxable_income_usd)
+
         assert abs(0.0
                    + m.amt_taxable_income_usd
-                   - 3
+                   - 1
                    + 0.0) < 1e-4
 
     def test_fed_random_taxes_usd(self, model):
         m = model
         e = m.enum
+        self.set_all_income(m)
 
-        m.override(e.state_taxes_usd, 100)
-        m.override(e.state_reg_income_taxes_usd, 100)
-        m.override(e.state_random_taxes_usd, 100)
-        m.override(e.fed_taxes_usd, 100)
-        m.override(e.fed_reg_income_taxes_usd, 100)
-        m.override(e.amt_taxes_usd, 100)
         m.override(e.fed_ss_taxes_usd, 1)
         m.override(e.fed_medicare_taxes_usd, 1)
+        m.revert(e.fed_random_taxes_usd)
 
-        assert abs( m.fed_random_taxes_usd - 2 ) == 0
+        assert abs(0.0
+                   + m.fed_random_taxes_usd
+                   - 2
+                   + 0.0) < 1e-4
+
 
     def test_state_taxes_usd(self, model):
         m = model
         e = m.enum
+        self.set_all_income(m)
 
+        m.override(e.state_sdi_taxes_usd, 1)
         m.override(e.state_reg_income_taxes_usd, 1)
-        m.override(e.state_random_taxes_usd, 1)
-        m.override(e.fed_random_taxes_usd, 100)
-        m.override(e.fed_taxes_usd, 100)
-        m.override(e.fed_reg_income_taxes_usd, 100)
-        m.override(e.amt_taxes_usd, 100)
-        m.override(e.fed_ss_taxes_usd, 100)
-        m.override(e.fed_medicare_taxes_usd, 100)
+        m.revert(e.state_taxes_usd)
 
-        assert abs( m.state_taxes_usd - 2 ) == 0
+        assert abs(0.0
+                   + m.state_taxes_usd
+                   - 2
+                   + 0.0) < 1e-4
 
     def test_state_reg_income_taxes_usd(self, model):
         m = model
@@ -289,43 +286,35 @@ class TestTaxes(object):
         taxes = m.taxes_obj.apply_tax_table(money, table)
         assert taxes == m.state_reg_income_taxes_usd
 
-    def test_state_random_taxes_usd(self, model):
+    def test_state_sdi_taxes_usd(self, model):
         m = model
         e = m.enum
 
-        m.override(e.state_taxes_usd, 100)
-        m.override(e.state_reg_income_taxes_usd, 100)
-        m.override(e.fed_random_taxes_usd, 100)
-        m.override(e.fed_taxes_usd, 100)
-        m.override(e.fed_reg_income_taxes_usd, 100)
-        m.override(e.amt_taxes_usd, 100)
-        m.override(e.fed_ss_taxes_usd, 100)
-        m.override(e.fed_medicare_taxes_usd, 100)
+        self.set_all_income(m)
         m.override(e.state_taxable_income_usd, 100)
         table = {
             0:    0.01,
             1000:  0.0,
             }
         m.override(e.sdi_tax_table, table)
+        m.revert(e.state_sdi_taxes_usd)
 
-        assert abs( m.state_random_taxes_usd - 1 ) == 0
+        assert abs( m.state_sdi_taxes_usd - 1 ) == 0
 
     def test_state_taxable_income_usd(self, model):
         m = model
         e = m.enum
+        self.set_all_income(m)
 
         m.override(e.reg_income_usd, 1)
         m.override(e.nso_income_usd, 1)
         m.override(e.iso_sales_income_usd, 1)
         m.override(e.shares_vested_rsu_n, 1)
-        m.override(e.ipo_price_usd, 1)
-        m.override(e.rsu_income_usd, 1)
-        m.override(e.nso_income_usd, 1)
-        m.override(e.iso_sales_income_usd, 1)
-        m.override(e.iso_exercise_income_usd, 100)
-        m.override(e.fed_tax_deduction_usd, 100)
+
         m.override(e.tax_exempt_contributions_usd, 1)
         m.override(e.state_tax_deduction_usd, 1)
+
+        m.revert(e.state_taxable_income_usd)
 
         assert abs(0.0
                    + m.state_taxable_income_usd
@@ -358,11 +347,32 @@ class TestTaxes(object):
         # not implemented
         assert 0 == m.state_itemized_deductions_usd
 
+    def test_fed_taxable_income_usd(self, model):
+        m = model
+        e = m.enum
+        self.set_all_income(m)
+
+        m.override(e.reg_income_usd, 1)
+        m.override(e.rsu_vesting_taxable_income_usd, 1)
+        m.override(e.nso_income_usd, 1)
+        m.override(e.iso_sales_income_usd, 1)
+        m.override(e.rsu_vesting_taxable_income_usd, 1)
+
+        m.override(e.tax_exempt_contributions_usd, 1)
+        m.override(e.fed_tax_deduction_usd, 1)
+
+        m.revert(e.fed_taxable_income_usd)
+
+        assert abs(0.0
+                   + m.fed_taxable_income_usd
+                   - 2
+                   + 0.0) < 1e-4
+
     def test_tax_burden_usd(self, model):
         m = model
         e = m.enum
 
-        m.override(e.state_random_taxes_usd, 100)
+        m.override(e.state_sdi_taxes_usd, 100)
         m.override(e.state_reg_income_taxes_usd, 100)
         m.override(e.fed_random_taxes_usd, 100)
         m.override(e.fed_reg_income_taxes_usd, 100)

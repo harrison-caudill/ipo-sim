@@ -17,6 +17,7 @@ class Income(object):
             'total_income_usd': self.total_income_usd,
             'rem_grants_lst': self.rem_grants_lst,
             'rem_grants_dict': self.rem_grants_dict,
+            'cleared_from_sale_usd': self.cleared_from_sale,
 
             # Sales Orders
             'sales_orders': [],
@@ -82,22 +83,44 @@ class Income(object):
                  + m.iso_sales_income_usd
                  + 0.0 )
 
+    def cleared_from_sale(self, m):
+        cleared = ( 0.0
+                    + m.total_income_usd
+                    - m.reg_income_usd
+                    - m.outstanding_taxes_usd
+                    + 0.0 )
+        return cleared
+
 
 ###############################################################################
 # Convenience Functions for Selling Shares                                    #
 ###############################################################################
 
-def sales_orders_all(m, price=None, prefer_exercise=True):
-    """Place sell orders for all shares possible
+def grant_lst_for_vehicle(m, vehicle, cheap_first=True):
+    lst = [ g for g in m.grants_lst if g.vehicle == vehicle ]
+    if cheap_first:
+        lst.sort(key=lambda g: g.strike_usd)
+    else:
+        lst.sort(key=lambda g: g.strike_usd, reverse=True)
+    return lst
 
-    Start with the RSUs, then the NSOs, then the ISOs.  The options
-    will be selected in the order specififed in private.py.
+def sales_orders_all(*a, **k):
+    return sales_orders_rsu(*a,**k) + sales_orders_options(*a,**k)
+
+def sales_orders_options(m,
+                         price=None,
+                         prefer_exercise=True,
+                         cheap_first=True,
+                         nso_first=False):
+    """Place sell orders for all options possible
 
     If you don't specify a sales price, it'll automatically use the
     IPO price which is used for RSU withholding computations.
 
     If you would prefer to liquidate shares that are currently held,
     set prefer_exercise to True.
+
+    If you want to ditch the expensive options first, assert cheap_first
 
     returns: [<Sales Order>, ...]
     """
@@ -106,38 +129,35 @@ def sales_orders_all(m, price=None, prefer_exercise=True):
     if price is None: price = m.ipo_price_usd
     assert(0 <= price)
 
+    # Set up the list of sales orders
+    option_lst = []
+    nso_lst = grant_lst_for_vehicle(m, 'nso', cheap_first=cheap_first)
+    iso_lst = grant_lst_for_vehicle(m, 'iso', cheap_first=cheap_first)
+    
+    if nso_first:
+        option_lst = nso_lst + iso_lst
+    else:
+        option_lst = iso_lst + nso_lst
+
+    retval = []
+
     # How many shares can be legally sold?
     remaining_restricted = m.shares_sellable_restricted_n
 
-    retval = sales_orders_rsu(m, price=price)
-
-    for g in m.grants_lst:
-        if g.vehicle == 'nso':
-            n = g.vested_unsold(m.query_date)
-            n = min(remaining_restricted, n)
-            remaining_restricted -= n
-            retval.append({
-                'id': g.name,
-                'qty': n,
-                'price': price,
-                'prefer_exercise': prefer_exercise
-                })
-
-    for g in m.grants_lst:
-        if g.vehicle == 'iso':
-            n = g.vested_unsold(m.query_date)
-            n = min(remaining_restricted, n)
-            remaining_restricted -= n
-            retval.append({
-                'id': g.name,
-                'qty': n,
-                'price': price,
-                'prefer_exercise': prefer_exercise
-                })
+    for g in option_lst:
+        n = g.vested_unsold(m.query_date)
+        n = min(remaining_restricted, n)
+        remaining_restricted -= n
+        retval.append({
+            'id': g.name,
+            'qty': n,
+            'price': price,
+            'prefer_exercise': prefer_exercise
+            })
 
     return retval
 
-def sales_orders_rsu(m, price=None):
+def sales_orders_rsu(m, price=None, **ignore):
     retval = []
 
     # default to the ipo price
