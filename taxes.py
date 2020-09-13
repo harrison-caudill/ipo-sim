@@ -177,7 +177,7 @@ class Taxes(object):
     def shares_withheld_rsu_fed_rate(self, m):
         # FIXME: Assumes you have exceeded thresholds for the other
         #        random things (ss, sdi, foo, bar).  Drop an assert at
-        #        least
+        #        least.  If not, then this will introduce a cycle.
         # FIXME: Unit Test
         mtab = m.medicare_tax_table
         med_val = max([mtab[k] for k in mtab.keys()])
@@ -222,7 +222,7 @@ class Taxes(object):
     def state_taxable_income(self, m):
         return ( 0.0
                  + m.reg_income_usd
-                 + (m.shares_vested_rsu_eoy_n * m.ipo_price_usd )
+                 + m.rsu_vesting_taxable_income_usd
                  + m.nso_income_usd
                  + m.iso_sales_income_usd
                  - m.state_tax_deduction_usd

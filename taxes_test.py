@@ -309,7 +309,7 @@ class TestTaxes(object):
         m.override(e.reg_income_usd, 1)
         m.override(e.nso_income_usd, 1)
         m.override(e.iso_sales_income_usd, 1)
-        m.override(e.shares_vested_rsu_n, 1)
+        m.override(e.rsu_vesting_taxable_income_usd, 1)
 
         m.override(e.tax_exempt_contributions_usd, 1)
         m.override(e.state_tax_deduction_usd, 1)
