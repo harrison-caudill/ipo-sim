@@ -91,7 +91,7 @@ def sales_orders_all(m, price=None, prefer_exercise=True):
     """Place sell orders for all shares possible
 
     Start with the RSUs, then the NSOs, then the ISOs.  The options
-    will be selected in the order specififed in private.py.
+    will be selected in the order specified in private.py.
 
     If you don't specify a sales price, it'll automatically use the
     IPO price which is used for RSU withholding computations.
