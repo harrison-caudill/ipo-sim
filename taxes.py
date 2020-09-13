@@ -271,8 +271,6 @@ class Taxes(object):
                  + 0.0 )
 
     def amt_taxable_income(self, m):
-        print(m.amt_base_income_usd)
-        print(m.amt_exemption_usd)
         return max(0.0,
                    ( 0.0
                      + m.amt_base_income_usd
