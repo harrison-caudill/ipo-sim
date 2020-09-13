@@ -38,6 +38,8 @@ class Taxes(object):
             # Util
             'taxes_obj': self,
             'tax_exempt_contributions_usd': self.tax_exempt_contributions,
+            'shares_withheld_iso_rate': 0.0,
+            'shares_withheld_nso_rate': 0.0,
 
             # Federal Taxes
             'fed_taxes_usd': self.fed_taxes,

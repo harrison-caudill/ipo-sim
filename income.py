@@ -21,10 +21,28 @@ class Income(object):
             'shares_sold_nso_n': self.shares_sold_nso_n,
             'shares_sold_iso_n': self.shares_sold_iso_n,
             'shares_sold_rsu_n': self.shares_sold_rsu_n,
+            'shares_available_rsu_n': self.shares_available_rsu_n,
+            'shares_available_nso_n': self.shares_available_nso_n,
+            'shares_available_iso_n': self.shares_available_iso_n,
 
             # Sales Orders
             'sales_orders': [],
             }
+
+    def shares_available_rsu_n(self, m):
+        return (m.shares_vested_unsold_rsu_n
+                - (m.shares_vested_rsu_n
+                   * (1.0 - m.shares_withheld_rsu_rate)))
+
+    def shares_available_nso_n(self, m):
+        return (m.shares_vested_unsold_nso_n
+                - (m.shares_vested_nso_n
+                   * (1.0 - m.shares_withheld_nso_rate)))
+
+    def shares_available_iso_n(self, m):
+        return (m.shares_vested_unsold_iso_n
+                - (m.shares_vested_iso_n
+                   * (1.0 - m.shares_withheld_iso_rate)))
 
     def sales_simulation(self, m):
         cost = 0.0
@@ -40,16 +58,20 @@ class Income(object):
 
         for order in m.sales_orders:
             g = m.grants_dict[order['id']]
+            rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
 
             copied = end[g.name]
 
             # Execute the sell order on the copy -- this is where we
             # expect asserts to pop if we've screwed up the numbers.
+
             tmp = copied.sell(m.query_date,
                               order['qty'],
                               order['price'],
+                              rate,
                               prefer_exercise=order['prefer_exercise'],
-                              update=True)
+                              update=True,
+                              )
 
             # Add our copied object to the end-state
             end[copied.name] = copied
@@ -163,7 +185,8 @@ def sales_orders_options(m,
     remaining_restricted = m.shares_sellable_restricted_n
 
     for g in option_lst:
-        n = g.vested_unsold(m.query_date)
+        rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
+        n = g.available(m.query_date, rate)
         n = min(remaining_restricted, n)
         remaining_restricted -= n
         retval.append({
@@ -184,8 +207,7 @@ def sales_orders_rsu(m, price=None, **ignore):
 
     for g in m.grants_lst:
         if g.vehicle == 'rsu':
-            n = (g.vested(m.query_date)
-                 * (1.0 - m.shares_withheld_rsu_rate))
+            n = g.available(m.query_date, m.shares_withheld_rsu_rate)
             retval.append({
                 'id': g.name,
                 'qty': n,

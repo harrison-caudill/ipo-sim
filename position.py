@@ -199,7 +199,24 @@ The following counts are available:
     def vested_unsold(self, on):
         return self.vested(on) - self.sold
 
-    def sell(self, on, n, fmv_usd, prefer_exercise=True, update=False):
+    def withheld(self, on, withholding_rate):
+        return int(round(self.vested(on) * withholding_rate, 0))
+
+    def available(self, on, withholding_rate):
+        # prevent off-by-one errors by ensuring this is the converse
+        vested = self.vested(on)
+        return ( 0
+                 + int(round(vested * (1.0 - withholding_rate)))
+                 - self.sold
+                 + 0 )
+
+    def sell(self,
+             on,
+             n,
+             fmv_usd,
+             withholding_rate,
+             prefer_exercise=True,
+             update=False):
         """Provides the info about a sell at a given FMV.
 
         on:      date at which the sale happens (so we can check the vesting)
@@ -214,7 +231,8 @@ The following counts are available:
         vested = self.vested(on)
         outstanding = self.vested_outstanding(on)
         held = self.held()
-        available = held + vested
+        available = self.available(on, withholding_rate)
+        withheld = self.withheld(on, withholding_rate)
 
         assert(available >= n)
 
@@ -230,6 +248,7 @@ The following counts are available:
         if update:
             self.sold += n
             self.exercised += sell_outstanding
+            self.sold += withheld
 
         cost = sell_outstanding * self.strike_usd
         gross = n * fmv_usd

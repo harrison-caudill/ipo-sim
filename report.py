@@ -108,8 +108,8 @@ class Report(object):
         start_lst = m.grants_lst
         end_lst = m.rem_grants_lst
 
-        print('        ID       Type  Strike        Vested            Sold       Remaining')
-        row_fmt = '%(name)15s  %(vehicle)s %(strike)6s %(vested)15s %(sold)15s %(rem)15s'
+        print('        ID       Type  Strike        Vested       Liquidated      Remaining')
+        row_fmt = '%(name)15s  %(vehicle)s %(strike)6s %(vested)15s %(liquidated)15s %(rem)15s'
         for i in range(len(start_lst)):
             start = start_lst[i]
             end = end_lst[i]
@@ -119,7 +119,7 @@ class Report(object):
                 'vehicle': start.vehicle,
                 'strike':  '%5.1f' % start.strike_usd,
                 'vested':  comma(start.vested(m.query_date), dec=False),
-                'sold':    comma(end.sold - start.sold, dec=False),
+                'liquidated':    comma(end.sold - start.sold, dec=False),
                 'rem':     comma(end.vested_unsold(m.query_date), dec=False),
                 }
             print(row_fmt % kwargs)
