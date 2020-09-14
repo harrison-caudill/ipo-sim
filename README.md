@@ -112,3 +112,7 @@ skyrockets to $90/share).
    and one quarterly.
 
  * Does not do anything with long-term capital gains
+  
+ * Does not handle mobility cases - the tax models assume all your
+   vesting and sales happen in the same location. Similarly, everything 
+   in here is based on US tax code.
