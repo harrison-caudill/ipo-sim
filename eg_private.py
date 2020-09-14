@@ -106,6 +106,17 @@ ca_single = {
     1000000 : 0.133
     }
 
+ny_single = {
+    0 : 0.04,
+    8500 : 0.045,
+    11700 : 0.0525,
+    13900 : 0.0590,
+    21400 : 0.0621,
+    80650 : 0.0649,
+    215400 : 0.0685,
+    1077550 : 0.0882,
+    }
+
 
 ###############################################################################
 # Input your constants                                                        #
@@ -119,7 +130,8 @@ __constants = {
 
     # Look up the numbers that are appropriate for your tax filing
     'fed_std_deduction_usd': 24800,
-    'amt_exemption_usd': 113400,
+    'amt_exemption_rolloff_threshhold_usd': 1036800,
+    'amt_exemption_base_usd': 113400,
     'state_std_deduction_usd': 4537,
 
     # This price determines things like your tax burden from RSUs
