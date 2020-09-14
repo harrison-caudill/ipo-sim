@@ -33,7 +33,8 @@ an environment up and running with python 3.  There is plenty of
 4. Edit `private.py` to put in your grants, income, withholdings, etc.
 The file itself has all the documentation you need to find that.  The
 grants are tricky, but there are convenience functions to help you
-port from Shareworks.
+port from Shareworks. This is also where you can set different the
+price of the stock to different values to see how the outputs change.
 
 5. `python investigator.py`
 
@@ -45,7 +46,7 @@ If you want more than the few random questions we've included for your
 convenience, then you'll want to modify things.  The system is written
 using a libary calld `pylink`, which was originally written to manage
 radio link budgets for low earth orbit spacecraft, but has been
-bastardized to do everything from computing `Eb/N0` values for Voyager
+bastardized to do everything from computing `C/N0` values for Voyager
 1 to the Allen Telescope Array, to...well...this.  Start by reading
 the documentation, and looking through the examples on the [pylink
 Github page](https://github.com/harrison-caudill/pylink).
@@ -91,10 +92,10 @@ skyrockets to $90/share).
 
 ## Places to update
 
- * Change the values specific to you in `private.py`
+ * Change the values specific to you and assumptions about the stock value in `private.py`
 
  * Add convenience functions to implement the sales logic you want.
-   Two such conveneince functions exist in `income.py`
+   Two such convenience functions exist in `income.py`
 
  * Ask any questions of the model that you want to ask in
    `investigator.py`
