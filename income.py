@@ -17,10 +17,29 @@ class Income(object):
             'total_income_usd': self.total_income_usd,
             'rem_grants_lst': self.rem_grants_lst,
             'rem_grants_dict': self.rem_grants_dict,
+            'cleared_from_sale_usd': self.cleared_from_sale,
+            'shares_sold_nso_n': self.shares_sold_nso_n,
+            'shares_sold_iso_n': self.shares_sold_iso_n,
+            'shares_sold_rsu_n': self.shares_sold_rsu_n,
+            'shares_available_rsu_n': self.shares_available_rsu_n,
+            'shares_available_nso_n': self.shares_available_nso_n,
+            'shares_available_iso_n': self.shares_available_iso_n,
 
             # Sales Orders
             'sales_orders': [],
             }
+
+    def shares_available_rsu_n(self, m):
+        return (m.shares_vested_unsold_rsu_n
+                * (1.0 - m.shares_withheld_rsu_rate))
+
+    def shares_available_nso_n(self, m):
+        return (m.shares_vested_unsold_nso_n
+                * (1.0 - m.shares_withheld_nso_rate))
+
+    def shares_available_iso_n(self, m):
+        return (m.shares_vested_unsold_iso_n
+                * (1.0 - m.shares_withheld_iso_rate))
 
     def sales_simulation(self, m):
         cost = 0.0
@@ -36,16 +55,20 @@ class Income(object):
 
         for order in m.sales_orders:
             g = m.grants_dict[order['id']]
+            rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
 
             copied = end[g.name]
 
             # Execute the sell order on the copy -- this is where we
             # expect asserts to pop if we've screwed up the numbers.
+
             tmp = copied.sell(m.query_date,
                               order['qty'],
                               order['price'],
+                              rate,
                               prefer_exercise=order['prefer_exercise'],
-                              update=True)
+                              update=True,
+                              )
 
             # Add our copied object to the end-state
             end[copied.name] = copied
@@ -57,6 +80,21 @@ class Income(object):
         retval['cost'] = cost
         retval['end'] = end
         return retval
+
+    def shares_sold_rsu_n(self, m):
+        gdict = m.grants_dict
+        l = [ o for o in m.sales_orders if gdict[o['id']].vehicle == 'rsu' ]
+        return int(sum([o['qty'] for o in l]))
+
+    def shares_sold_iso_n(self, m):
+        gdict = m.grants_dict
+        l = [ o for o in m.sales_orders if gdict[o['id']].vehicle == 'iso' ]
+        return int(sum([o['qty'] for o in l]))
+
+    def shares_sold_nso_n(self, m):
+        gdict = m.grants_dict
+        l = [ o for o in m.sales_orders if gdict[o['id']].vehicle == 'nso' ]
+        return int(sum([o['qty'] for o in l]))
 
     def rem_grants_lst(self, m):
         d = m.rem_grants_dict
@@ -82,22 +120,44 @@ class Income(object):
                  + m.iso_sales_income_usd
                  + 0.0 )
 
+    def cleared_from_sale(self, m):
+        cleared = ( 0.0
+                    + m.total_income_usd
+                    - m.reg_income_usd
+                    - m.outstanding_taxes_usd
+                    + 0.0 )
+        return cleared
+
 
 ###############################################################################
 # Convenience Functions for Selling Shares                                    #
 ###############################################################################
 
-def sales_orders_all(m, price=None, prefer_exercise=True):
-    """Place sell orders for all shares possible
+def grant_lst_for_vehicle(m, vehicle, cheap_first=True):
+    lst = [ g for g in m.grants_lst if g.vehicle == vehicle ]
+    if cheap_first:
+        lst.sort(key=lambda g: g.strike_usd)
+    else:
+        lst.sort(key=lambda g: g.strike_usd, reverse=True)
+    return lst
 
-    Start with the RSUs, then the NSOs, then the ISOs.  The options
-    will be selected in the order specified in private.py.
+def sales_orders_all(*a, **k):
+    return sales_orders_rsu(*a,**k) + sales_orders_options(*a,**k)
+
+def sales_orders_options(m,
+                         price=None,
+                         prefer_exercise=True,
+                         cheap_first=True,
+                         nso_first=False):
+    """Place sell orders for all options possible
 
     If you don't specify a sales price, it'll automatically use the
     IPO price which is used for RSU withholding computations.
 
     If you would prefer to liquidate shares that are currently held,
     set prefer_exercise to True.
+
+    If you want to ditch the expensive options first, assert cheap_first
 
     returns: [<Sales Order>, ...]
     """
@@ -106,38 +166,36 @@ def sales_orders_all(m, price=None, prefer_exercise=True):
     if price is None: price = m.ipo_price_usd
     assert(0 <= price)
 
+    # Set up the list of sales orders
+    option_lst = []
+    nso_lst = grant_lst_for_vehicle(m, 'nso', cheap_first=cheap_first)
+    iso_lst = grant_lst_for_vehicle(m, 'iso', cheap_first=cheap_first)
+    
+    if nso_first:
+        option_lst = nso_lst + iso_lst
+    else:
+        option_lst = iso_lst + nso_lst
+
+    retval = []
+
     # How many shares can be legally sold?
     remaining_restricted = m.shares_sellable_restricted_n
 
-    retval = sales_orders_rsu(m, price=price)
-
-    for g in m.grants_lst:
-        if g.vehicle == 'nso':
-            n = g.vested_unsold(m.query_date)
-            n = min(remaining_restricted, n)
-            remaining_restricted -= n
-            retval.append({
-                'id': g.name,
-                'qty': n,
-                'price': price,
-                'prefer_exercise': prefer_exercise
-                })
-
-    for g in m.grants_lst:
-        if g.vehicle == 'iso':
-            n = g.vested_unsold(m.query_date)
-            n = min(remaining_restricted, n)
-            remaining_restricted -= n
-            retval.append({
-                'id': g.name,
-                'qty': n,
-                'price': price,
-                'prefer_exercise': prefer_exercise
-                })
+    for g in option_lst:
+        rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
+        n = g.available(m.query_date, rate)
+        n = min(remaining_restricted, n)
+        remaining_restricted -= n
+        retval.append({
+            'id': g.name,
+            'qty': n,
+            'price': price,
+            'prefer_exercise': prefer_exercise
+            })
 
     return retval
 
-def sales_orders_rsu(m, price=None):
+def sales_orders_rsu(m, price=None, **ignore):
     retval = []
 
     # default to the ipo price
@@ -146,7 +204,7 @@ def sales_orders_rsu(m, price=None):
 
     for g in m.grants_lst:
         if g.vehicle == 'rsu':
-            n = g.vested_unsold(m.query_date)
+            n = g.available(m.query_date, m.shares_withheld_rsu_rate)
             retval.append({
                 'id': g.name,
                 'qty': n,

@@ -19,10 +19,15 @@ def parse_date(d):
 
 def mon_diff(start, end):
     retval = 12*(end.year - start.year) + (end.month - start.month)
-    if start.day > end.day: retval -= 1
+
+    last_day_start = calendar.monthrange(start.year, start.month)[-1]
+    last_day_end = calendar.monthrange(end.year, end.month)[-1]
+
+    if (((last_day_start != start.day) or (last_day_end != end.day))
+        and start.day > end.day):
+        retval -= 1
     retval = max(retval, 0)
     return retval
-
 
 def from_table(name,
                vehicle,
@@ -163,16 +168,18 @@ The following counts are available:
         periods = int(min(float((math.floor(mon / self.period_months))),
                           self.n_periods))
 
-        # Calculate the number of shares per vesting period
-        n_vesting = self.n_shares - self.n_cliff
+        # How many shares have a regular vesting cadence?
+        n_vesting = float(self.n_shares - self.n_cliff)
         if self.negative_cliff: n_vesting += self.n_cliff
-        n_shares = int(math.floor(n_vesting / float(self.n_periods)))
+
+        # Calculate the floating fraction of vested shares
+        frac_vested = float(periods) / float(self.n_periods)
 
         # Add that many shares each vesting period
         if periods >= self.n_periods:
             retval = self.n_shares
         else:
-            retval = periods * n_shares + self.n_cliff
+            retval = round(frac_vested * n_vesting + self.n_cliff, 0)
 
         # quick sanity check
         assert(retval >= self.exercised)
@@ -200,7 +207,24 @@ The following counts are available:
     def vested_unsold(self, on):
         return self.vested(on) - self.sold
 
-    def sell(self, on, n, fmv_usd, prefer_exercise=True, update=False):
+    def withheld(self, on, withholding_rate):
+        return int(round(self.vested(on) * withholding_rate, 0))
+
+    def available(self, on, withholding_rate):
+        # prevent off-by-one errors by ensuring this is the converse
+        vested = self.vested(on)
+        return ( 0
+                 + int(round(vested * (1.0 - withholding_rate)))
+                 - self.sold
+                 + 0 )
+
+    def sell(self,
+             on,
+             n,
+             fmv_usd,
+             withholding_rate,
+             prefer_exercise=True,
+             update=False):
         """Provides the info about a sell at a given FMV.
 
         on:      date at which the sale happens (so we can check the vesting)
@@ -215,7 +239,8 @@ The following counts are available:
         vested = self.vested(on)
         outstanding = self.vested_outstanding(on)
         held = self.held()
-        available = held + vested
+        available = self.available(on, withholding_rate)
+        withheld = self.withheld(on, withholding_rate)
 
         assert(available >= n)
 
@@ -231,6 +256,7 @@ The following counts are available:
         if update:
             self.sold += n
             self.exercised += sell_outstanding
+            self.sold += withheld
 
         cost = sell_outstanding * self.strike_usd
         gross = n * fmv_usd
@@ -258,13 +284,12 @@ class Position(object):
 
             'shares_sellable_n': self.shares_sellable,
             'shares_sellable_restricted_n': self.shares_sellable_restricted,
+            'end_of_year': self.end_of_year,
+            'shares_vested_rsu_usd': self.shares_vested_rsu_usd,
             }
 
         self._add_summation_nodes('shares_total%s_n',
                                   'n_shares')
-
-        self._add_summation_nodes('shares_sold%s_n',
-                                  'sold')
 
         self._add_summation_nodes('shares_exercised%s_n',
                                   'exercised')
@@ -272,6 +297,10 @@ class Position(object):
         self._add_summation_nodes('shares_vested%s_n',
                                   'vested',
                                   *['query_date'])
+
+        self._add_summation_nodes('shares_vested%s_eoy_n',
+                                  'vested',
+                                  *['end_of_year'])
 
         self._add_summation_nodes('shares_unvested%s_n',
                                   'unvested',
@@ -293,6 +322,10 @@ class Position(object):
                                   'held',
                                   call=True)
 
+        self._add_summation_nodes('shares_previously_sold%s_n',
+                                  'sold',
+                                  call=False)
+
         self._add_summation_nodes('exercise_cost_outstanding%s_usd',
                                   'outstanding_cost',
                                   call=True)
@@ -303,10 +336,6 @@ class Position(object):
 
         self._add_summation_nodes('rem_shares_total%s_n',
                                   'n_shares',
-                                  rem=True)
-
-        self._add_summation_nodes('rem_shares_sold%s_n',
-                                  'sold',
                                   rem=True)
 
         self._add_summation_nodes('rem_shares_exercised%s_n',
@@ -343,6 +372,11 @@ class Position(object):
                                   call=True,
                                   rem=True)
 
+        self._add_summation_nodes('shares_previously_sold%s_n',
+                                  'sold',
+                                  call=False,
+                                  rem=True)
+
         self._add_summation_nodes('rem_exercise_cost_outstanding%s_usd',
                                   'outstanding_cost',
                                   call=True,
@@ -359,7 +393,13 @@ class Position(object):
         OK, this method is complicated.  Because of python's
         late-bindings, and the need to generate and register callable
         objects, we use functools to create a curried outer function
-        which returns the callable object we actually want to register.
+        which returns the callable object we actually want to register
+        when executed.  The outer object takes in one parameter (the
+        vehicle) and generates a callable which takes in one parameter
+        (the model).  Because the vehicle is what needs to be curried,
+        we use partial on the outer, not the inner.  We then just
+        immediately call the outer function and register the resulting
+        inner function as the callback.
 
         The fmt is the name of the node with a single %s which will be
         given the vehicle
@@ -395,6 +435,16 @@ class Position(object):
             return sum([ getattr(m, fmt % ('_%s'%typ)) for typ in VEHICLES ])
         self.tribute[fmt % ('')] = __tmp
 
+    def end_of_year(self, m):
+        d = parse_date(m.query_date)
+        yr = d.year
+        mon = 12
+        day = calendar.monthrange(d.year, d.month)[-1]
+        return datetime.datetime(year=yr, month=mon, day=day)
+
+    def shares_vested_rsu_usd(self, m):
+        return m.shares_vested_rsu_n * m.ipo_price_usd
+
     def shares_sellable(self, m):
         return (0
                 + m.shares_sellable_restricted_n
@@ -402,11 +452,14 @@ class Position(object):
                 + 0 )
 
     def shares_sellable_restricted(self, m):
-        n_unsold = ( 0
-                     + (m.shares_total_iso_n - m.shares_sold_iso_n)
-                     + (m.shares_total_nso_n - m.shares_sold_nso_n)
-                     + 0 )
-        max_shares = int(math.floor(n_unsold * m.max_sellable_restricted_frac))
+        n_considered = ( 0
+                         + m.shares_total_nso_n
+                         - m.shares_previously_sold_nso_n
+                         + m.shares_total_iso_n
+                         - m.shares_previously_sold_iso_n
+                         + 0 )
+        base = n_considered * m.max_sellable_restricted_frac
+        max_shares = int(math.floor(base))
 
         available = ( 0
                       + m.shares_vested_outstanding_iso_n

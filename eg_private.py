@@ -129,7 +129,7 @@ __constants = {
 
     # The query date is necessary to determine how many shares have
     # vested.  I'd recommend setting it to the IPO date.
-    'query_date': '11/05/55',
+    'query_date': '9/23/20',
 
     # If you want to also exercise some shares, you'll need to record
     # that income as it counts towards amti.  This is done in

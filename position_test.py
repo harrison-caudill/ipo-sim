@@ -5,6 +5,22 @@ import pylink
 import pytest
 
 from position import Grant
+from position import mon_diff
+from position import parse_date
+
+
+def test_mon_diff():
+
+    assert 1 == mon_diff(parse_date('01/31/20'),
+                         parse_date('02/29/20'))
+
+    start = parse_date('1/2/20')
+    assert 0 == mon_diff(start, parse_date('1/30/10'))
+    assert 0 == mon_diff(start, parse_date('1/30/20'))
+    assert 0 == mon_diff(start, parse_date('2/1/20'))
+    assert 1 == mon_diff(start, parse_date('2/2/20'))
+    assert 12 == mon_diff(start, parse_date('1/2/21'))
+    assert 11 == mon_diff(start, parse_date('1/1/21'))
 
 import position as anAwkward
 
