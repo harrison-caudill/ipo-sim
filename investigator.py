@@ -182,6 +182,35 @@ withholdings that will happen afterwards.
         print("Cash Remaining:     $ %s" % comma(remaining,
                                                dec=False, white=False))
 
+    def question_8(self):
+        self._qst(7, "We sell nothing on day 1, then the price drops.")
+
+        # Place an order for all RSUs
+        price = m.ipo_price_usd - 5
+        orders = myMeager.sales_orders_rsu(self.m, price)
+        self.m.override(self.e.sales_orders, orders)
+        print("Sell Price:         $ %s" % comma(price,dec=False,white=False))
+        print("Cash Cleared:       $ %s" % comma(m.cleared_from_sale_usd,
+                                                 dec=False, white=False))
+        print()
+
+        price = m.ipo_price_usd
+        orders = myMeager.sales_orders_rsu(self.m, price)
+        self.m.override(self.e.sales_orders, orders)
+        print("Sell Price:         $ %s" % comma(price,dec=False,white=False))
+        print("Cash Cleared:       $ %s" % comma(m.cleared_from_sale_usd,
+                                                 dec=False, white=False))
+        print()
+
+        price = m.ipo_price_usd + 5
+        orders = myMeager.sales_orders_rsu(self.m, price)
+        self.m.override(self.e.sales_orders, orders)
+        print("Sell Price:         $ %s" % comma(price,dec=False,white=False))
+        print("Cash Cleared:       $ %s" % comma(m.cleared_from_sale_usd,
+                                                 dec=False, white=False))
+        print()
+
+
     def go(self):
         self.question_1()
         self.question_2()
@@ -190,6 +219,7 @@ withholdings that will happen afterwards.
         self.question_5()
         self.question_6()
         self.question_7()
+        self.question_8()
         print()
 
 if __name__ == '__main__':
