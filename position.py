@@ -12,7 +12,10 @@ VEHICLES = ['iso', 'nso', 'rsu']
 
 def parse_date(d):
     if str == type(d):
-        return datetime.datetime.strptime(d, '%m/%d/%y')
+        if 4 == len(d.split('/')[-1]):
+            return datetime.datetime.strptime(d, '%m/%d/%Y')
+        else:
+            return datetime.datetime.strptime(d, '%m/%d/%y')
     else:
         return d
 
@@ -70,6 +73,12 @@ def from_table(name,
 
     n_cliff = first_val
     negative_cliff = (last_val < (second_val-1))
+
+    # is the total number of shares sane?
+    regular_vest = round((n_shares-first_val-last_val)/(n_periods-1), 0)
+    if not regular_vest == second_val:
+        raise ValueError("Invalid number of share specified %d vs %d" %(
+            regular_vest, second_val))
 
     return Grant(name=name,
                  vehicle=vehicle,
