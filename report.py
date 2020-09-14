@@ -67,7 +67,10 @@ class Report(object):
             if real_only:
                 s = '%s $   ( %5.1f%%A         )' % (comma(val, dec=False), ri)
             else:
-                rt = round(((100.0 * float(val)) / float(taxable_income)), 1)
+                if taxable_income:
+                    rt = round(((100.0 * float(val)) / float(taxable_income)), 1)
+                else:
+                    rt = 0.0
                 s = '%s $   ( %5.1f%%A %5.1f%%T )' % (comma(val, dec=False), ri, rt)
             args['var_'+name] = s
 

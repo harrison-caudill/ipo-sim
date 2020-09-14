@@ -7,6 +7,7 @@ import pytest
 from position import Grant
 from position import mon_diff
 from position import parse_date
+from position import from_table
 
 
 def test_mon_diff():
@@ -222,6 +223,27 @@ class TestGrant(object):
         assert 0 == g.vested('1/30/20')
         assert 0 == g.vested('2/1/20')
         assert 3 == g.vested('4/1/20')
+
+    def test_from_table(self):
+        g = from_table(name='RSU-TK421',
+                       vehicle='rsu',
+                       first_date='1/1/20', first_val=750,
+                       second_date='2/1/20', second_val=1000,
+                       last_date='1/1/24', last_val=250,
+                       n_shares=48000,
+                       exercised=0,
+                       sold=0,
+                       strike_usd=1.75)
+        with pytest.raises(ValueError):
+            g = from_table(name='RSU-TK421',
+                           vehicle='rsu',
+                           first_date='1/1/20', first_val=750,
+                           second_date='2/1/20', second_val=1000,
+                           last_date='1/1/24', last_val=250,
+                           n_shares=4800,
+                           exercised=0,
+                           sold=0,
+                           strike_usd=1.75)
 
     def test_unvested(self):
         g = Grant(name='test',

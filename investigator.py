@@ -40,7 +40,10 @@ withholdings that will happen afterwards.
 
         held = m.shares_withheld_rsu_n
         vested = m.shares_vested_rsu_eoy_n
-        rate = round(100.0 * held / float(vested), 1)
+        if vested:
+            rate = round(100.0 * held / float(vested), 1)
+        else:
+            rate = -1.0
         print("Withholding:   %s / %s ( %5.1f %% )" % (
             comma(held, dec=False, white=False),
             comma(vested, dec=False, white=False),
@@ -57,7 +60,10 @@ withholdings that will happen afterwards.
         print("Share Price:  $ %.2f" % m.ipo_price_usd)
         print("Owed:         $ %s" % comma(m.outstanding_taxes_usd,
                                           dec=False, white=False))
-        pct = int((needed * 100) / m.shares_vested_rsu_n)
+        if m.shares_vested_rsu_n:
+            pct = int((needed * 100) / m.shares_vested_rsu_n)
+        else:
+            pct = -1
         print("Sell:           %s ( %5.1f %% )" % (
             comma(needed, dec=False, white=False),
             pct))
@@ -107,6 +113,8 @@ withholdings that will happen afterwards.
         print("We Clear: %s"%comma(m.cleared_from_sale_usd))
 
     def amt_free_iso(self, strike=None):
+        m = self.m
+        e = m.enum
         if strike is None:
             g = [g for g in m.grants_lst if g.vehicle=='iso'][0]
             strike = g.strike_usd
@@ -114,18 +122,16 @@ withholdings that will happen afterwards.
         dollars = 0
         amti_gap = 0
         n_shares = 0
-        for i in range(0, int(m.shares_available_iso_n)+10, 10):
-            amti_gap = i * (m.ipo_price_usd - strike)
-            m.override(self.e.iso_exercise_income_usd, amti_gap)
-            if m.amt_taxes_usd > m.fed_reg_income_taxes_usd:
-                dollars = amti_gap
-                n_shares = i
-                break
-        m.override(self.e.iso_exercise_income_usd, 0)
 
+        max_val = m.shares_available_iso_n*(m.ipo_price_usd-strike)
+        iso_in = m.solve_for(e.iso_exercise_income_usd,
+                             e.amt_taxes_usd, m.fed_reg_income_taxes_usd,
+                             0, max_val, max_val/50.0, rounds=3)
+
+        n_shares = int(iso_in / float(strike))
         cost = n_shares * strike
 
-        return (dollars, n_shares, strike, cost)
+        return (iso_in, n_shares, strike, cost)
 
     def question_6(self):
         self._qst(6, "If we sell it all, how many ISOs can we buy w/o AMT?")

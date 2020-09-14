@@ -25,10 +25,10 @@ GRANTS = [
     # you.  Check the definition in position.py for more details.
     from_table(name='RSU-TK421',
                vehicle='rsu',
-               first_date='11/05/55', first_val=1210,
-               second_date='02/05/56', second_val=1657,
-               last_date='11/05/59', last_val=447,
-               n_shares=26512,
+               first_date='1/1/20', first_val=750,
+               second_date='2/1/20', second_val=1000,
+               last_date='1/1/24', last_val=250,
+               n_shares=48000,
                exercised=0,
                sold=0,
                strike_usd=1.75),
@@ -37,24 +37,25 @@ GRANTS = [
     Grant(name='BonusTigers',
           vehicle='nso',
           strike_usd=2,
-          start='1/1/20',
+          start='1/1/10',
           n_periods=1,
-          n_shares=0xdeadbeef,
-          exercised=0,
-          sold=0,
+          n_shares=1000,
+          exercised=500,
+          sold=250,
           period_months=1),
 
     # If you want to manually specify
     Grant(name='javax.swing',
           vehicle='iso',
           strike_usd=4,
-          start='1/1/20',
-          n_periods=12,
-          n_shares=0xcafebabe,
+          start='1/1/15',
+          n_periods=48,
+          n_shares=100000,
           exercised=0,
           sold=0,
-          period_months=1),
+          period_months=3),
     ]
+
 
 ###############################################################################
 # Select your tax table                                                       #
@@ -106,6 +107,17 @@ ca_single = {
     1000000 : 0.133
     }
 
+ny_single = {
+    0 : 0.04,
+    8500 : 0.045,
+    11700 : 0.0525,
+    13900 : 0.0590,
+    21400 : 0.0621,
+    80650 : 0.0649,
+    215400 : 0.0685,
+    1077550 : 0.0882,
+    }
+
 
 ###############################################################################
 # Input your constants                                                        #
@@ -119,7 +131,8 @@ __constants = {
 
     # Look up the numbers that are appropriate for your tax filing
     'fed_std_deduction_usd': 24800,
-    'amt_exemption_usd': 113400,
+    'amt_exemption_rolloff_threshhold_usd': 1036800,
+    'amt_exemption_base_usd': 113400,
     'state_std_deduction_usd': 4537,
 
     # This price determines things like your tax burden from RSUs
@@ -143,7 +156,7 @@ __constants = {
     'palantir_drca_usd': 0,
 
     # Regular income
-    'reg_income_usd': 0,
+    'reg_income_usd': 100000,
 
     # If you have any other income that does not count as regular
     # income, but does affect amti (such as any ISOs you've exercised
@@ -153,8 +166,8 @@ __constants = {
     # Check your paystub and estimate how much has been withheld for
     # taxes by the end of the year.  This one is needed to approximate
     # how much remaining tax burden will exist.
-    'fed_withheld_usd': 0,
-    'state_withheld_usd': 0,
+    'fed_withheld_usd': 20000,
+    'state_withheld_usd': 15000,
     }
 
 
