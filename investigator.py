@@ -101,6 +101,8 @@ withholdings that will happen afterwards.
         self.m.override(self.e.sales_orders, orders)
 
         self.rep.print_grants()
+        self.rep.print_tax_summary()
+        print()
 
         print("We Clear: %s"%comma(m.cleared_from_sale_usd))
 
@@ -131,6 +133,8 @@ withholdings that will happen afterwards.
         self.m.override(self.e.sales_orders, orders)
 
         self.rep.print_grants()
+        self.rep.print_tax_summary()
+        print()
 
         print("Just using the first ISO strike price we find for starters.")
 
@@ -156,12 +160,17 @@ withholdings that will happen afterwards.
         self.m.override(self.e.sales_orders, orders)
 
         self.rep.print_grants()
+        print()
 
         print("Just using the first ISO strike price we find for starters.")
 
         cleared = m.cleared_from_sale_usd
         (amt, n, strike, cost) = self.amt_free_iso()
         remaining = cleared - cost
+
+        m.override(self.e.iso_exercise_income_usd, n*(m.ipo_price_usd-strike))
+
+        self.rep.print_tax_summary()
 
         print("AMT Income Gap:     $ %s" % comma(amt, dec=False, white=False))
         print("Exercisable shares:   %s" % comma(n, dec=False, white=False))

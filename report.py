@@ -31,12 +31,13 @@ Outstanding:        %(var_state_out)s
 
 === Federal Taxes ===
 Fed Taxable Income: %(fed_taxable_income)s $
-AMT Taxable Income: %(amt_taxable_income)s $
 Actual Income:      %(total_income)s $
 Reg Taxes:          %(var_fed_reg)s
-AMT Taxes:          %(var_fed_amt)s
 SS Taxes:           %(var_fed_ss)s
 Medicare Taxes:     %(var_fed_med)s
+AMT Taxable Income: %(amt_taxable_income)s $
+AMT Exemption:      %(var_amt_exempt)s
+AMT Taxes:          %(var_amt)s
 Federal Taxes:      %(var_fed_tot)s
 Cash Withheld:      %(var_fed_with)s
 RSU Withheld:       %(var_fed_rsu_with)s
@@ -84,7 +85,8 @@ class Report(object):
         args['fed_taxable_income'] = comma(m.fed_taxable_income_usd, dec=False)
         args['amt_taxable_income'] = comma(m.amt_taxable_income_usd, dec=False)
         taxable_income = m.amt_taxable_income_usd
-        __a('fed_amt', m.amt_taxes_usd)
+        __a('amt', m.amt_taxes_usd)
+        __a('amt_exempt', m.amt_exemption_usd)
         taxable_income = m.fed_taxable_income_usd
         __a('fed_reg', m.fed_reg_income_taxes_usd)
         __a('fed_ss', m.fed_ss_taxes_usd)

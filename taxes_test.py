@@ -46,7 +46,6 @@ def model():
                               'reg_income_usd': 0,
                               'ipo_price_usd': 1,
                               'fed_std_deduction_usd': 1,
-                              'amt_exemption_usd': 1,
                               'state_std_deduction_usd': 1,
                               'query_date': '1/10/10',
                               })
@@ -262,6 +261,29 @@ class TestTaxes(object):
                    + m.amt_base_income_usd
                    - 5
                    + 0.0) < 1e-4
+
+    def test_amt_exemption_usd(self, model):
+        m = model
+        e = m.enum
+        i_crit = 1036800
+        base = 113400
+
+        m.override(e.amt_base_income_usd, 0)
+        print(base, m.amt_exemption_usd)
+        assert base == m.amt_exemption_usd
+
+        m.override(e.amt_base_income_usd, i_crit - 1)
+        assert base == m.amt_exemption_usd
+
+        m.override(e.amt_base_income_usd, i_crit)
+        assert base == m.amt_exemption_usd
+
+        m.override(e.amt_base_income_usd, i_crit+4)
+        assert (base-1) == m.amt_exemption_usd
+
+        m.override(e.amt_base_income_usd, i_crit+4*base)
+        assert 0 == m.amt_exemption_usd
+
 
     def test_fed_random_taxes_usd(self, model):
         m = model

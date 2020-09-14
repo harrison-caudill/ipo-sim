@@ -58,6 +58,7 @@ class Taxes(object):
             'fed_tax_rate_vs_income': self.fed_tax_rate_vs_income,
             'amt_tax_rate_vs_taxable': self.amt_tax_rate_vs_taxable,
             'amt_tax_rate_vs_income': self.amt_tax_rate_vs_income,
+            'amt_exemption_usd': self.amt_exemption_usd,
             'fed_outstanding_taxes_usd': self.fed_outstanding_taxes,
 
             # State Taxes
