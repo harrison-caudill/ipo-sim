@@ -19,10 +19,15 @@ def parse_date(d):
 
 def mon_diff(start, end):
     retval = 12*(end.year - start.year) + (end.month - start.month)
-    if start.day > end.day: retval -= 1
+
+    last_day_start = calendar.monthrange(start.year, start.month)[-1]
+    last_day_end = calendar.monthrange(end.year, end.month)[-1]
+
+    if (((last_day_start != start.day) or (last_day_end != end.day))
+        and start.day > end.day):
+        retval -= 1
     retval = max(retval, 0)
     return retval
-
 
 def from_table(name,
                vehicle,
