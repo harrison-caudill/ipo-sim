@@ -272,9 +272,10 @@ class Taxes(object):
                  * 1.0 )
 
     def amt_exemption_usd(self, m):
-        i_crit = 1036800                # "phase-out threshold"
+        
+        i_crit = m.amt_exemption_rolloff_threshhold_usd
         income = m.amt_base_income_usd  # "amti"
-        base = 113400
+        base = m.amt_exemption_base_usd
 
         if income <= i_crit: return base
         if income > (4 * base) + i_crit: return 0

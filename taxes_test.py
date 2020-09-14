@@ -39,6 +39,8 @@ def model():
                            **{'palantir_401k_usd': 0,
                               'fed_tax_table': fed_married_joint,
                               'state_tax_table': ca_married,
+                              'amt_exemption_rolloff_threshhold_usd': 1036800,
+                              'amt_exemption_base_usd': 113400,
                               'palantir_fsa_usd': 0,
                               'palantir_drca_usd': 0,
                               'iso_exercise_income_usd': 0,
