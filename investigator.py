@@ -52,6 +52,7 @@ withholdings that will happen afterwards.
     def question_2(self):
         self._qst(2, "What is the outstanding tax burden?")
         self.rep.print_tax_summary()
+        self.rep.print_grants()
 
     def question_3(self):
         self._qst(3, "How many RSUs need to be sold to cover tax burden?")

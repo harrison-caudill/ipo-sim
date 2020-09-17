@@ -223,9 +223,12 @@ The following counts are available:
         # prevent off-by-one errors by ensuring this is the converse
         vested = self.vested(on)
         return ( 0
-                 + int(round(vested * (1.0 - withholding_rate)))
+                 + int(round(vested * (1.0 - withholding_rate), 0))
                  - self.sold
                  + 0 )
+
+    def withhold(self, on, withholding_rate):
+        self.sold += self.withheld(on, withholding_rate)
 
     def sell(self,
              on,
@@ -249,7 +252,6 @@ The following counts are available:
         outstanding = self.vested_outstanding(on)
         held = self.held()
         available = self.available(on, withholding_rate)
-        withheld = self.withheld(on, withholding_rate)
 
         assert(available >= n)
 
@@ -265,7 +267,6 @@ The following counts are available:
         if update:
             self.sold += n
             self.exercised += sell_outstanding
-            self.sold += withheld
 
         cost = sell_outstanding * self.strike_usd
         gross = n * fmv_usd
