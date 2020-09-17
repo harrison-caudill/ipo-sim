@@ -5,6 +5,8 @@ import math
 import pylink
 import calendar
 
+from report import comma
+
 import datetime
 
 VEHICLES = ['iso', 'nso', 'rsu']
@@ -219,16 +221,39 @@ The following counts are available:
     def withheld(self, on, withholding_rate):
         return int(round(self.vested(on) * withholding_rate, 0))
 
-    def available(self, on, withholding_rate):
-        # prevent off-by-one errors by ensuring this is the converse
-        vested = self.vested(on)
-        return ( 0
-                 + int(round(vested * (1.0 - withholding_rate), 0))
-                 - self.sold
-                 + 0 )
+    def available(self, on, withholding_rate=None):
+        retval = ( 0
+                   + self.vested(on)
+                   - self.sold
+                   + 0 )
+        if withholding_rate:
+            retval -= self.withheld(on, withholding_rate)
+        return retval
 
     def withhold(self, on, withholding_rate):
         self.sold += self.withheld(on, withholding_rate)
+
+    def print_grant(self, on, rate):
+        fmt = """Grant %(name)s
+Type:      %(veh)s
+Size:      %(n)s
+Strike:    %(strike).2f
+Vested:    %(vested)s
+Withheld:  %(with)s
+Sold:      %(sold)s
+Available: %(avail)s
+"""
+        a = {
+            'name': self.name,
+            'veh': self.vehicle,
+            'n': comma(self.n_shares, dec=False, white=False),
+            'strike': self.strike_usd,
+            'vested': comma(self.vested(on), dec=False, white=False),
+            'with': comma(self.withheld(on, rate), dec=False, white=False),
+            'sold': comma(self.sold, dec=False, white=False),
+            'avail': comma(self.available(on), dec=False, white=False),
+            }
+        print(fmt%a)
 
     def sell(self,
              on,
@@ -251,7 +276,7 @@ The following counts are available:
         vested = self.vested(on)
         outstanding = self.vested_outstanding(on)
         held = self.held()
-        available = self.available(on, withholding_rate)
+        available = self.available(on)
 
         assert(available >= n)
 

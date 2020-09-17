@@ -2,6 +2,8 @@
 
 import math
 import pylink
+import matplotlib.pyplot as plt
+import os
 
 import income as myMeager
 import position as anAwkward
@@ -130,6 +132,13 @@ withholdings that will happen afterwards.
                              0, max_val, max_val/50.0, rounds=3)
 
         n_shares = int(iso_in / float(strike))
+
+        lst = [g for g in m.grants_lst if g.vehicle == 'iso']
+        d = m.query_date
+        vested_outstanding = sum(map(lambda g: g.vested_outstanding(d), lst))
+
+        n_shares = min(n_shares, vested_outstanding)
+        
         cost = n_shares * strike
 
         return (iso_in, n_shares, strike, cost)
@@ -166,6 +175,8 @@ withholdings that will happen afterwards.
         orders = myMeager.sales_orders_rsu(self.m)
         self.m.override(self.e.sales_orders, orders)
 
+        orig = m.iso_exercise_income_usd
+
         self.rep.print_grants()
         print()
 
@@ -176,7 +187,6 @@ withholdings that will happen afterwards.
         remaining = cleared - cost
 
         m.override(self.e.iso_exercise_income_usd, n*(m.ipo_price_usd-strike))
-
         self.rep.print_tax_summary()
 
         print("AMT Income Gap:     $ %s" % comma(amt, dec=False, white=False))
@@ -189,8 +199,10 @@ withholdings that will happen afterwards.
         print("Cash Remaining:     $ %s" % comma(remaining,
                                                dec=False, white=False))
 
+        m.override(self.e.iso_exercise_income_usd, orig)
+
     def question_8(self):
-        self._qst(7, "We sell nothing on day 1, then the price drops.")
+        self._qst(8, "We sell nothing on day 1, then the price drops.")
 
         # Place an order for all RSUs
         price = m.ipo_price_usd - 5
@@ -217,6 +229,109 @@ withholdings that will happen afterwards.
                                                  dec=False, white=False))
         print()
 
+    def question_9(self):
+        self._qst(9, "Basic financials vs share price")
+
+        m = self.m
+        e = m.enum
+
+        # Set up the loop
+        lo = 0.01  # low fmv
+        hi = 25.0 # high fmv
+        up = 100
+        orig = m.ipo_price_usd
+
+        x = []
+        y_gross = []
+        y_net = []
+        y_test = []
+        for i in range(up):
+            fmv = (i*(hi-lo)/up)+lo
+            x.append(fmv)
+
+            m.override(e.ipo_price_usd, fmv)
+            self.m.override(self.e.sales_orders, [])
+            orders = myMeager.sales_orders_rsu(self.m, price=fmv)
+            self.m.override(self.e.sales_orders, orders)
+
+            y_gross.append(m.total_income_usd)
+            y_net.append(m.total_income_usd - m.outstanding_taxes_usd)
+
+        m.override(e.ipo_price_usd, orig)
+
+        # Let's make our plots
+        fig, ax = plt.subplots()
+        ax.set_ylabel('Value (USD)')
+
+        ax.plot(x, y_gross, label='Gross')
+        ax.plot(x, y_net, label='Net')
+
+        fig.suptitle('Financials vs fmv')
+        ax.legend()
+
+        fname = 'fin.png'
+        path = os.path.join('.', fname)
+        fig.savefig(path, transparent=False)
+
+    def question_10(self):
+        self._qst(9, "What does exercisable ISOs look like vs IPO price?")
+
+        m = self.m
+        e = m.enum
+
+        # Set up the loop
+        lo = 5.0  # low fmv
+        hi = 25.0 # high fmv
+        up = 100
+        orig = m.ipo_price_usd
+        x = []
+        y_iso_n = []
+        y_cleared = []
+        y_ex_cost = []
+        y_rem = []
+        for i in range(up):
+            fmv = (i*(hi-lo)/up)+lo
+            x.append(fmv)
+
+            m.override(e.ipo_price_usd, fmv)
+            orders = myMeager.sales_orders_rsu(self.m, price=fmv)
+            self.m.override(self.e.sales_orders, orders)
+
+            (amt, iso, strike, cost) = self.amt_free_iso()
+            y_iso_n.append(iso)
+            cleared = m.cleared_from_sale_usd
+            y_cleared.append(cleared)
+            y_ex_cost.append(cost)
+            y_rem.append(cleared - cost)
+            
+        m.override(e.ipo_price_usd, orig)
+
+        # Let's make our plots
+        fig, ax_shares = plt.subplots()
+        ax_shares.set_xlabel('Share Price (USD)')
+
+        ax_shares.set_ylabel('ISOs (n)')
+        ax_shares.plot(x, y_iso_n, label='N Shares', color='tab:purple')
+
+        color = 'tab:green'
+        ax_dollars = ax_shares.twinx()
+        ax_dollars.set_ylabel('Value ($k)')
+
+        y_cleared = [x/1000 for x in y_cleared]
+        y_ex_cost = [x/1000 for x in y_ex_cost]
+        y_rem = [x/1000 for x in y_rem]
+
+        ax_dollars.plot(x, y_cleared, label='Gross')
+        ax_dollars.plot(x, y_ex_cost, label='Cost')
+        ax_dollars.plot(x, y_rem, label='Remaining')
+
+        fig.suptitle('ISO Outlook vs FMV')
+        ax_shares.legend(loc=3)
+        ax_dollars.legend()
+
+        fname = 'iso.png'
+        path = os.path.join('.', fname)
+        fig.savefig(path, transparent=False)
 
     def go(self):
         self.question_1()
@@ -227,6 +342,8 @@ withholdings that will happen afterwards.
         self.question_6()
         self.question_7()
         self.question_8()
+        self.question_9()
+        self.question_10()
         print()
 
 if __name__ == '__main__':
