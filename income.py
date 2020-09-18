@@ -30,20 +30,21 @@ class Income(object):
             }
 
     def shares_available_rsu_n(self, m):
-        return (m.shares_vested_unsold_rsu_n
+        return (m.shares_vested_unliquidated_rsu_n
                 * (1.0 - m.shares_withheld_rsu_rate))
 
     def shares_available_nso_n(self, m):
-        return (m.shares_vested_unsold_nso_n
+        return (m.shares_vested_unliquidated_nso_n
                 * (1.0 - m.shares_withheld_nso_rate))
 
     def shares_available_iso_n(self, m):
-        return (m.shares_vested_unsold_iso_n
+        return (m.shares_vested_unliquidated_iso_n
                 * (1.0 - m.shares_withheld_iso_rate))
 
     def sales_simulation(self, m):
         cost = 0.0
         retval = {
+            'objs': [],
             'iso':  0,
             'nso':  0,
             'rsu':  0,
@@ -76,6 +77,8 @@ class Income(object):
                               rate,
                               prefer_exercise=order['prefer_exercise'],
                               update=True,)
+
+            retval['objs'].append(tmp)
 
             # Add our copied object to the end-state
             end[copied.name] = copied
@@ -165,6 +168,8 @@ def sales_orders_options(m,
                          price=None,
                          prefer_exercise=True,
                          cheap_first=True,
+                         restricted=True,
+                         vested=True,
                          nso_first=False):
     """Place sell orders for all options possible
 
@@ -200,9 +205,13 @@ def sales_orders_options(m,
 
     for g in option_lst:
         rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
-        n = g.available(m.query_date, rate)
-        n = min(remaining_restricted, n)
-        remaining_restricted -= n
+        if vested:
+            n = g.available(m.query_date, rate)
+        else:
+            n = g.n_shares - g.liquidated
+        if restricted:
+            n = min(remaining_restricted, n)
+            remaining_restricted -= n
         retval.append({
             'id': g.name,
             'qty': n,

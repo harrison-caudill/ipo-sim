@@ -96,15 +96,7 @@ def from_table(name,
 
 
 class Grant(object):
-    """Equity grants.
-
-The following counts are available:
- * unvested (implicitly outstanding)
- * vested outstanding (iso/nso only)
- * exercised          (iso/nso only)
- * sold
- * held (fully owned share of stock)
-"""
+    """Equity grants."""
 
     def __init__(self,
                  name=None,
@@ -147,6 +139,10 @@ The following counts are available:
         self.exercised = exercised
         assert ((exercised is not None) or ('rsu' == vehicle))
 
+        # to track the number of withheld vs sold shares
+        self.withheld = 0
+
+        self.liquidated = sold
         self.sold = sold
 
         self.strike_usd = strike_usd
@@ -204,7 +200,7 @@ The following counts are available:
         return self.n_shares - self.exercised
 
     def held(self):
-        return self.exercised - self.sold
+        return self.exercised - self.liquidated
 
     def outstanding_cost(self):
         return self.outstanding() * self.strike_usd
@@ -215,33 +211,37 @@ The following counts are available:
         assert(outstanding >= 0)
         return outstanding * self.strike_usd
 
-    def vested_unsold(self, on):
-        return self.vested(on) - self.sold
+    def vested_unliquidated(self, on):
+        return self.vested(on) - self.liquidated
 
-    def withheld(self, on, withholding_rate):
+    def withholding(self, on, withholding_rate):
         return int(round(self.vested(on) * withholding_rate, 0))
 
     def available(self, on, withholding_rate=None):
         retval = ( 0
                    + self.vested(on)
-                   - self.sold
+                   - self.liquidated
                    + 0 )
         if withholding_rate:
-            retval -= self.withheld(on, withholding_rate)
+            retval -= self.withholding(on, withholding_rate)
         return retval
 
     def withhold(self, on, withholding_rate):
-        self.sold += self.withheld(on, withholding_rate)
+        n = self.withholding(on, withholding_rate)
+        self.liquidated += n
+        self.withheld += n
 
     def print_grant(self, on, rate):
         fmt = """Grant %(name)s
-Type:      %(veh)s
-Size:      %(n)s
-Strike:    %(strike).2f
-Vested:    %(vested)s
-Withheld:  %(with)s
-Sold:      %(sold)s
-Available: %(avail)s
+Type:        %(veh)s
+Size:        %(n)s
+Strike:      %(strike).2f
+Vested:      %(vested)s
+Withholding: %(witho)s
+Sold:        %(sold)s
+Liquidated:  %(liquid)s
+Withheld:    %(withe)s
+Available:   %(avail)s
 """
         a = {
             'name': self.name,
@@ -249,8 +249,10 @@ Available: %(avail)s
             'n': comma(self.n_shares, dec=False, white=False),
             'strike': self.strike_usd,
             'vested': comma(self.vested(on), dec=False, white=False),
-            'with': comma(self.withheld(on, rate), dec=False, white=False),
+            'witho': comma(self.withholding(on, rate), dec=False, white=False),
             'sold': comma(self.sold, dec=False, white=False),
+            'liquid': comma(self.liquidated, dec=False, white=False),
+            'with': comma(self.withheld, dec=False, white=False),
             'avail': comma(self.available(on), dec=False, white=False),
             }
         print(fmt%a)
@@ -291,15 +293,18 @@ Available: %(avail)s
 
         if update:
             self.sold += n
+            self.liquidated += n
             self.exercised += sell_outstanding
 
         cost = sell_outstanding * self.strike_usd
         gross = n * fmv_usd
         net = gross - cost
+
         return {
             'cost':      cost,
             'gross_usd': gross,
             'net_usd':   net,
+            'exercised': sell_outstanding,
             }
 
 
@@ -341,8 +346,8 @@ class Position(object):
                                   'unvested',
                                   *['query_date'])
 
-        self._add_summation_nodes('shares_vested_unsold%s_n',
-                                  'vested_unsold',
+        self._add_summation_nodes('shares_vested_unliquidated%s_n',
+                                  'vested_unliquidated',
                                   *['query_date'])
 
         self._add_summation_nodes('shares_vested_outstanding%s_n',
@@ -360,6 +365,11 @@ class Position(object):
         self._add_summation_nodes('shares_previously_sold%s_n',
                                   'sold',
                                   call=False)
+
+        self._add_summation_nodes('shares_withheld%s_n',
+                                  'withheld',
+                                  call=False,
+                                  rem=True)
 
         self._add_summation_nodes('exercise_cost_outstanding%s_usd',
                                   'outstanding_cost',
@@ -387,8 +397,8 @@ class Position(object):
                                   *['query_date'],
                                   rem=True)
 
-        self._add_summation_nodes('rem_shares_vested_unsold%s_n',
-                                  'vested_unsold',
+        self._add_summation_nodes('rem_shares_vested_unliquidated%s_n',
+                                  'vested_unliquidated',
                                   *['query_date'],
                                   rem=True)
 
@@ -405,11 +415,6 @@ class Position(object):
         self._add_summation_nodes('rem_shares_held%s_n',
                                   'held',
                                   call=True,
-                                  rem=True)
-
-        self._add_summation_nodes('shares_previously_sold%s_n',
-                                  'sold',
-                                  call=False,
                                   rem=True)
 
         self._add_summation_nodes('rem_exercise_cost_outstanding%s_usd',

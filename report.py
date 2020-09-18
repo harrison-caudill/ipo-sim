@@ -125,7 +125,7 @@ class Report(object):
                 'strike':  '%5.1f' % start.strike_usd,
                 'vested':  comma(start.vested(m.query_date), dec=False),
                 'liquidated':    comma(end.sold - start.sold, dec=False),
-                'rem':     comma(end.vested_unsold(m.query_date), dec=False),
+                'rem':     comma(end.vested_unliquidated(m.query_date), dec=False),
                 }
             print(row_fmt % kwargs)
         print()

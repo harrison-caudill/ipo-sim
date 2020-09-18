@@ -4,6 +4,7 @@ import math
 import pylink
 import matplotlib.pyplot as plt
 import os
+import pprint
 
 import income as myMeager
 import position as anAwkward
@@ -127,18 +128,20 @@ withholdings that will happen afterwards.
         n_shares = 0
 
         max_val = m.shares_available_iso_n*(m.ipo_price_usd-strike)
+
+
+        ### BUG IN PYLINK ###
+        # https://github.com/harrison-caudill/pylink/issues/47
+        m.override(e.iso_exercise_income_usd, 0)
+        ### BUG IN PYLINK ###
+
         iso_in = m.solve_for(e.iso_exercise_income_usd,
                              e.amt_taxes_usd, m.fed_reg_income_taxes_usd,
-                             0, max_val, max_val/50.0, rounds=3)
+                             0, max_val, max_val/10.0, rounds=5)
 
-        n_shares = int(iso_in / float(strike))
+        n_shares = iso_in / float(strike)
+        n_shares = int(min(n_shares, m.shares_vested_outstanding_iso_n))
 
-        lst = [g for g in m.grants_lst if g.vehicle == 'iso']
-        d = m.query_date
-        vested_outstanding = sum(map(lambda g: g.vested_outstanding(d), lst))
-
-        n_shares = min(n_shares, vested_outstanding)
-        
         cost = n_shares * strike
 
         return (iso_in, n_shares, strike, cost)
@@ -236,7 +239,7 @@ withholdings that will happen afterwards.
         e = m.enum
 
         # Set up the loop
-        lo = 0.01  # low fmv
+        lo = 5.0  # low fmv
         hi = 25.0 # high fmv
         up = 100
         orig = m.ipo_price_usd
@@ -244,27 +247,63 @@ withholdings that will happen afterwards.
         x = []
         y_gross = []
         y_net = []
-        y_test = []
+        y_tax = []
+        y_amti = []
+
+        m.override(self.e.query_date, '12/31/20')
+
+        amt_exemption_rolloff = -1
+        amt_exemption_gone = -1
+
         for i in range(up):
             fmv = (i*(hi-lo)/up)+lo
             x.append(fmv)
 
             m.override(e.ipo_price_usd, fmv)
-            self.m.override(self.e.sales_orders, [])
             orders = myMeager.sales_orders_rsu(self.m, price=fmv)
             self.m.override(self.e.sales_orders, orders)
 
-            y_gross.append(m.total_income_usd)
-            y_net.append(m.total_income_usd - m.outstanding_taxes_usd)
+            if (0 > amt_exemption_rolloff
+                and m.amt_base_income_usd > m.amt_exemption_rolloff_threshhold_usd):
+                amt_exemption_rolloff = fmv
 
-        m.override(e.ipo_price_usd, orig)
+            if (0 > amt_exemption_gone
+                and m.amt_exemption_usd == 0):
+                amt_exemption_gone = fmv
+
+            y_gross.append(m.total_income_usd)
+            y_tax.append(m.tax_burden_usd)
+            y_amti.append(m.amt_taxable_income_usd)
+            y_net.append(m.total_income_usd - m.outstanding_taxes_usd)
 
         # Let's make our plots
         fig, ax = plt.subplots()
         ax.set_ylabel('Value (USD)')
 
-        ax.plot(x, y_gross, label='Gross')
-        ax.plot(x, y_net, label='Net')
+        ax.plot(x, y_gross, label='Post-Withholding Income')
+        ax.plot(x, y_tax, label='Total Taxes')
+        ax.plot(x, y_amti, label='AMTI')
+        ax.plot(x, y_net, label='Net Income')
+
+        if 0 < amt_exemption_rolloff:
+            ax.axvline(amt_exemption_rolloff)
+            ax.text(amt_exemption_rolloff,
+                    m.amt_exemption_rolloff_threshhold_usd*1.1,
+                    'AMT Rolloff',
+                    rotation=45)
+
+        if 0 < amt_exemption_gone:
+            ax.axvline(amt_exemption_gone)
+            ax.text(amt_exemption_gone,
+                    m.amt_exemption_rolloff_threshhold_usd*1.1,
+                    'AMT Exemp. Gone',
+                    rotation=45)
+
+        ax.grid()
+
+        self.rep.print_tax_summary()
+
+        m.override(e.ipo_price_usd, orig)
 
         fig.suptitle('Financials vs fmv')
         ax.legend()
@@ -280,29 +319,78 @@ withholdings that will happen afterwards.
         e = m.enum
 
         # Set up the loop
-        lo = 5.0  # low fmv
-        hi = 25.0 # high fmv
+        lo = 12.0  # low fmv
+        hi = 15.0 # high fmv
         up = 100
         orig = m.ipo_price_usd
         x = []
         y_iso_n = []
+        y_gross = []
+        y_tax = []
         y_cleared = []
         y_ex_cost = []
         y_rem = []
+        y_test = []
+        y_amt_diff = []
+        m.override(self.e.query_date, '3/15/21')
+        #m.override(self.e.query_date, '12/31/35')
+
+        # triggers for vertical lines
+        amt_exemption_rolloff = -1
+        amt_exemption_gone = -1
+        iso_saturated = -1
+        rolloff_val = -1
+        gone_val = -1
+
         for i in range(up):
             fmv = (i*(hi-lo)/up)+lo
             x.append(fmv)
 
             m.override(e.ipo_price_usd, fmv)
-            orders = myMeager.sales_orders_rsu(self.m, price=fmv)
-            self.m.override(self.e.sales_orders, orders)
+            orders_all = myMeager.sales_orders_all(m,
+                                                   nso_first=True,
+                                                   cheap_first=False,
+                                                   prefer_exercise=True,
+                                                   restricted=False,
+                                                   price=fmv)
+            orders_opts = myMeager.sales_orders_options(m,
+                                                        nso_first=True,
+                                                        cheap_first=False,
+                                                        prefer_exercise=True,
+                                                        restricted=False,
+                                                        price=fmv)
+            orders_rsu = myMeager.sales_orders_rsu(m,price=fmv)
+            self.m.override(self.e.sales_orders, orders_all)
 
             (amt, iso, strike, cost) = self.amt_free_iso()
+
+            if (0 > amt_exemption_rolloff
+                and m.amt_base_income_usd > m.amt_exemption_rolloff_threshhold_usd):
+                amt_exemption_rolloff = fmv
+                rolloff_val = iso
+
+            if (0 > amt_exemption_gone
+                and m.amt_exemption_usd == 0):
+                amt_exemption_gone = fmv
+                gone_val = iso
+
+            if ((0 > iso_saturated)
+                and (iso >= m.shares_vested_outstanding_iso_n)):
+                iso_saturated = fmv
+
+            m.override(self.e.iso_exercise_income_usd, amt)
+
+            a = m.fed_reg_income_taxes_usd
+            b = m.amt_taxes_usd
+
             y_iso_n.append(iso)
             cleared = m.cleared_from_sale_usd
+
+            y_gross.append(m.total_income_usd)
+            # y_tax.append(m.outstanding_taxes_usd)
             y_cleared.append(cleared)
             y_ex_cost.append(cost)
-            y_rem.append(cleared - cost)
+            # y_rem.append(cleared - cost)
             
         m.override(e.ipo_price_usd, orig)
 
@@ -311,19 +399,48 @@ withholdings that will happen afterwards.
         ax_shares.set_xlabel('Share Price (USD)')
 
         ax_shares.set_ylabel('ISOs (n)')
-        ax_shares.plot(x, y_iso_n, label='N Shares', color='tab:purple')
+        ax_shares.plot(x, y_iso_n,
+                       label='AMT Free ISO Exercises',
+                       color='tab:purple')
 
         color = 'tab:green'
         ax_dollars = ax_shares.twinx()
         ax_dollars.set_ylabel('Value ($k)')
 
         y_cleared = [x/1000 for x in y_cleared]
+        y_gross = [x/1000 for x in y_gross]
         y_ex_cost = [x/1000 for x in y_ex_cost]
         y_rem = [x/1000 for x in y_rem]
+        ax_dollars.set_ylim(0, y_gross[-1]*1.1)
 
-        ax_dollars.plot(x, y_cleared, label='Gross')
-        ax_dollars.plot(x, y_ex_cost, label='Cost')
-        ax_dollars.plot(x, y_rem, label='Remaining')
+        ax_dollars.plot(x, y_gross, label='Pre-Tax Income')
+        ax_dollars.plot(x, y_cleared, label='Post-Tax Cash from Sale')
+        # ax_dollars.plot(x, y_tax, label='Taxes Owed')
+        # ax_dollars.plot(x, y_cleared, label='Post-Tax Income')
+        #ax_dollars.plot(x, y_ex_cost, label='Cost to Exercise')
+        # ax_dollars.plot(x, y_rem, label='Remaining')
+
+        if 0 < amt_exemption_rolloff:
+            ax_shares.axvline(amt_exemption_rolloff)
+            ax_shares.text(amt_exemption_rolloff,
+                           rolloff_val*1.05,
+                           'AMT Rolloff',
+                           rotation=45)
+
+        if 0 < amt_exemption_gone:
+            ax_shares.axvline(amt_exemption_gone)
+            ax_shares.text(amt_exemption_gone,
+                           gone_val*.95,
+                           'AMT Exemp. Gone',
+                           rotation=45)
+
+        if 0 < iso_saturated:
+            ax_shares.axvline(iso_saturated)
+            ax_shares.text(iso_saturated,
+                           m.shares_vested_outstanding_iso_n*.95,
+                           "All ISO's Available",
+                           rotation=0)
+
 
         fig.suptitle('ISO Outlook vs FMV')
         ax_shares.legend(loc=3)
@@ -343,7 +460,7 @@ withholdings that will happen afterwards.
         self.question_7()
         self.question_8()
         self.question_9()
-        self.question_10()
+        self.question_10() 
         print()
 
 if __name__ == '__main__':
