@@ -30,20 +30,21 @@ class Income(object):
             }
 
     def shares_available_rsu_n(self, m):
-        return (m.shares_vested_unsold_rsu_n
+        return (m.shares_vested_unliquidated_rsu_n
                 * (1.0 - m.shares_withheld_rsu_rate))
 
     def shares_available_nso_n(self, m):
-        return (m.shares_vested_unsold_nso_n
+        return (m.shares_vested_unliquidated_nso_n
                 * (1.0 - m.shares_withheld_nso_rate))
 
     def shares_available_iso_n(self, m):
-        return (m.shares_vested_unsold_iso_n
+        return (m.shares_vested_unliquidated_iso_n
                 * (1.0 - m.shares_withheld_iso_rate))
 
     def sales_simulation(self, m):
         cost = 0.0
         retval = {
+            'objs': [],
             'iso':  0,
             'nso':  0,
             'rsu':  0,
@@ -51,13 +52,21 @@ class Income(object):
 
         end = copy.deepcopy(m.grants_dict)
 
-        # make sure we aren't doing anything crazy
+        touched = {}
 
+        # Process withholdings
+        for name in end:
+            grant = end[name]
+            rate = getattr(m, 'shares_withheld_%s_rate' % grant.vehicle)
+            grant.withhold(m.query_date, rate)
+
+        # Process the sales orders (in order, allowing for duplicates)
         for order in m.sales_orders:
             g = m.grants_dict[order['id']]
-            rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
+            rate = getattr(m, 'shares_withheld_%s_rate' % g.vehicle)
 
             copied = end[g.name]
+            touched[g.name] = copied
 
             # Execute the sell order on the copy -- this is where we
             # expect asserts to pop if we've screwed up the numbers.
@@ -67,15 +76,26 @@ class Income(object):
                               order['price'],
                               rate,
                               prefer_exercise=order['prefer_exercise'],
-                              update=True,
-                              )
+                              update=True,)
+
+            retval['objs'].append(tmp)
 
             # Add our copied object to the end-state
             end[copied.name] = copied
+            touched[copied.name] = copied
 
             # Collect the results of the sale
             retval[g.vehicle] += tmp['net_usd']
             cost += tmp['cost']
+
+            g = end[name]
+            rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
+            if name not in touched:
+                # FIXME: Break out withhold vs sell
+                # Until then, run a sell order with 0 shares to
+                # trigger withholdings so that the ending cap table is
+                # properly represented.
+                g.sell(m.query_date, 0, 0, rate, update=True)
 
         retval['cost'] = cost
         retval['end'] = end
@@ -148,6 +168,8 @@ def sales_orders_options(m,
                          price=None,
                          prefer_exercise=True,
                          cheap_first=True,
+                         restricted=True,
+                         vested=True,
                          nso_first=False):
     """Place sell orders for all options possible
 
@@ -183,9 +205,13 @@ def sales_orders_options(m,
 
     for g in option_lst:
         rate = getattr(m, 'shares_withheld_%s_rate'%g.vehicle)
-        n = g.available(m.query_date, rate)
-        n = min(remaining_restricted, n)
-        remaining_restricted -= n
+        if vested:
+            n = g.available(m.query_date, rate)
+        else:
+            n = g.n_shares - g.liquidated
+        if restricted:
+            n = min(remaining_restricted, n)
+            remaining_restricted -= n
         retval.append({
             'id': g.name,
             'qty': n,

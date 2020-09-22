@@ -288,8 +288,8 @@ class Taxes(object):
                  + m.rsu_vesting_taxable_income_usd
                  + m.nso_income_usd
                  + m.iso_sales_income_usd
-                 - m.tax_exempt_contributions_usd
                  + m.iso_exercise_income_usd
+                 - m.tax_exempt_contributions_usd
                  + 0.0 )
 
     def amt_taxable_income(self, m):
