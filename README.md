@@ -4,6 +4,22 @@ This project was created to help us in our own decision-making for the
 upcoming IPO/direct-listing/foo.  See the part in the license about us
 making no rep or warrant?  Yeah, we mean that.
 
+If people would like additional features, you have three options:
+
+1. Use the Source, Luke
+
+2. File a ticket and maybe in my free time between working to
+eliminate diabetic retinopathy, securing america's commercial space
+infrastructure from Chinese/Russian/Korean/Martian cyber attack, and
+raising a tiny infant, I'll get to it.
+
+3. Ask someone else to use the source.
+
+There are a number of convenience APIs available to make it easy to
+customize your own questions, but this is NOT a WYSIWYG system and
+will require some pythoning.  If you haven't the time, inclination,
+and experience to customize it, then ride with the existing questions.
+
 I recommend it be used to help guide your decision-making process;
 please don't use this tool to file your taxes.
 
@@ -39,6 +55,155 @@ price of the stock to different values to see how the outputs change.
 5. `python investigator.py`
 
 6. Let Dixon Hill do the rest.
+
+
+# Example Output
+
+`investigator.py` comes already set up with a series of examples that
+may be of some use to you.  Below is sample output from the
+`eg_private.py` file.
+
+
+## Tax Summaries
+
+Several `Questions` will output a summary of tax information, in the
+following format:
+
+```
+%T: Rate vs the taxable income
+%A: Rate vs the ACTUAL (in your bank) income
+
+=== State Taxes ===
+Taxable Income:           715,463 $
+Actual Income:            150,000 $
+Reg Taxes:                 62,187 $   (  41.5%A   8.7%T )
+SDI Taxes:                  1,229 $   (   0.8%A   0.2%T )
+State Taxes:               63,416 $   (  42.3%A   8.9%T )
+Cash Withheld:             15,000 $   (  10.0%A   2.1%T )
+RSU Withheld:              58,320 $   (  38.9%A   8.2%T )
+Outstanding:               -9,903 $   (  -6.6%A  -1.4%T )
+
+=== Federal Taxes ===
+Fed Taxable Income:       695,200 $
+Actual Income:            150,000 $
+Reg Taxes:                194,373 $   ( 129.6%A  28.0%T )
+SS Taxes:                   8,537 $   (   5.7%A   1.2%T )
+Medicare Taxes:            14,087 $   (   9.4%A   2.0%T )
+AMT Taxable Income:       606,600 $
+AMT Exemption:            113,400 $   (  75.6%A  18.7%T )
+AMT Taxes:                165,890 $   ( 110.6%A  27.3%T )
+Federal Taxes:            216,997 $   ( 144.7%A  31.2%T )
+Cash Withheld:             20,000 $   (  13.3%A   2.9%T )
+RSU Withheld:             138,804 $   (  92.5%A  20.0%T )
+Outstanding:               58,193 $   (  38.8%A   8.4%T )
+
+=== Overall ===
+Actual Income:            150,000 $
+State Taxes:               63,416 $   (  42.3%A   8.9%T )
+Federal Taxes:            216,997 $   ( 144.7%A  31.2%T )
+Total Taxes:              280,414 $   ( 186.9%A         )
+Outstanding:               48,290 $   (  32.2%A         )
+```
+
+Note that two percentages are displayed: one for `Actual (A)` and one
+for `Taxable (T)`.  Since the taxable income includes things like ISO
+exercises (counting towards AMTI) or RSU vesting (which counts towards
+both AMT and regular federal taxes).  The `Actual` income represents
+cash that enters your bank account.  This way we get to show fun
+things like tax rates of `186.9%` (because who doesn't like to pay
+double their annual income in that year's taxes?).
+
+
+## Cap Table
+
+This shows basic tabular information about your stock positions.  The
+only interesting bit is that it discusses `Liquidated` shares, which
+includes both shares that are liquidated by the IRS/FTB as well as
+shares that are sold.
+
+```
+        ID       Type  Strike        Vested       Liquidated      Remaining
+      RSU-TK421  rsu    1.8          41,500               0          27,149
+    BonusTigers  nso    2.0          10,000               0           9,750
+    javax.swing  iso    4.0          91,667               0          91,667
+```
+
+
+## Question 1: How many RSUs will be automatically withheld?
+```
+These numbers are for shares vesting throughout the
+year, since those will affect taxes as well.  Shares
+available on the big day will NOT be affected by RSU
+withholdings that will happen afterwards.
+
+Withholding:   14,351 / 47,500 (  30.2 % )
+```
+
+
+## Question 2: What is the outstanding tax burden?
+
+This really just prints a tax summary, as shown above.
+
+
+
+## Question 3:  How many RSUs need to be sold to cover tax burden?
+
+Pretty straight forward -- what is it going to take to cover your tax
+burden?
+
+
+
+## Question 4: How much cash if we sell it all (starting with the
+   expensive NSOs)?
+
+Gives you an idea of how much money you net (post taxes) and how many
+NSOs would be sold if you wanted to sell it all.
+
+
+
+## Question 5: How much cash if we sell the RSUs?
+
+Same as Question 4, but selling the entire RSU position, and no
+options/shares.
+
+
+
+## Question 6: If we sell it all, how many ISOs can we buy w/o AMT?
+
+Since ISO exercises incur AMTI burden, and regular income taxes grow
+more quickly than AMT taxes, it means that you'll have some number of
+ISOs you can exercise, before you end up incurring additional tax
+burden from AMT.
+
+
+
+## Question 7: If we sell all RSUs, how many ISOs can we buy w/o AMT?
+
+Same as question 6, but if you only sell the RSUs.  Less regular
+income (from not selling options) means less regular income tax, means
+less shielding from AMT for exercising ISOs.
+
+
+
+## Question 8: Basic financials vs share price (RSU + NSO)
+
+This one produces two graphs of basic financial information (y axis)
+vs share price on the big day (x axis).  One graph is for RSU-only
+sales and one is for RSU+NSO sales.
+
+![Basic Financials for RSU+NSO Sales](https://user-images.githubusercontent.com/984746/93916605-a62a5780-fcbe-11ea-8f7a-f5b9257aecf2.png)
+
+![Basic Financials for RSU Only Sales](https://user-images.githubusercontent.com/984746/93916613-a9254800-fcbe-11ea-8ace-54dc36cdd428.png)
+
+
+
+## Question 9: What does exercisable ISOs look like vs IPO price?
+
+This one shows the number of ISOs that can be sold without incurring
+an additional AMT tax burden.
+
+![Number of Exercisable ISOs without AMT](https://user-images.githubusercontent.com/984746/93916615-a9bdde80-fcbe-11ea-9f3a-d45b182ecc93.png)
+
 
 # Architecture and Modifications
 

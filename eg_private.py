@@ -25,10 +25,10 @@ GRANTS = [
     # you.  Check the definition in position.py for more details.
     from_table(name='RSU-TK421',
                vehicle='rsu',
-               first_date='1/1/20', first_val=750,
-               second_date='2/1/20', second_val=1000,
-               last_date='1/1/24', last_val=250,
-               n_shares=48000,
+               first_date='1/1/19', first_val=1500,
+               second_date='2/1/19', second_val=2000,
+               last_date='1/1/23', last_val=500,
+               n_shares=96000,
                exercised=0,
                sold=0,
                strike_usd=1.75),
@@ -39,7 +39,7 @@ GRANTS = [
           strike_usd=2,
           start='1/1/10',
           n_periods=1,
-          n_shares=1000,
+          n_shares=10000,
           exercised=500,
           sold=250,
           period_months=1),
@@ -50,7 +50,7 @@ GRANTS = [
           strike_usd=4,
           start='1/1/15',
           n_periods=48,
-          n_shares=100000,
+          n_shares=250000,
           exercised=0,
           sold=0,
           period_months=3),
@@ -142,7 +142,7 @@ __constants = {
 
     # The query date is necessary to determine how many shares have
     # vested.  I'd recommend setting it to the IPO date.
-    'query_date': '9/23/20',
+    'query_date': '9/29/20',
 
     # If you want to also exercise some shares, you'll need to record
     # that income as it counts towards amti.  This is done in
@@ -156,7 +156,7 @@ __constants = {
     'palantir_drca_usd': 0,
 
     # Regular income
-    'reg_income_usd': 100000,
+    'reg_income_usd': 150000,
 
     # If you have any other income that does not count as regular
     # income, but does affect amti (such as any ISOs you've exercised

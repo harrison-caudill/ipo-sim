@@ -12,6 +12,57 @@ import taxes as deathAnd
 import report as explosive
 import private
 
+if float(pylink.__version__) < 0.9:
+    s = """
+===============================================================================
+===                            WARNING                                      ===
+===============================================================================
+
+TL;DR
+
+If you aren't the type to write python code, you'll be fine, but we'd
+still prefer you upgrade by running the following command:
+
+pip install -U pylink-satcom
+
+
+
+The full story:
+
+Your version of pylink has a bug that includes a workaround.  We
+recommend upgrading to the latest version (0.9) by issuing the
+following command:
+
+pip install -U pylink-satcom
+
+The bug pertains to initialization of the system before using the
+solve_for method in the DAGModel.  Bug 47 was fixed in pull request
+48, and is reflected in version 0.9 of pylink.
+
+if (!willing_to_upgrade && want_to_c0d3)
+{
+/*
+ * WORKAROUND and DESCRIPTION
+ *
+ * Follow the example provided in amt_free_iso where we override the
+ * thing we're solving for to be the lowest value in the search range
+ * (really just any value in the search range).  Otherwise, what can
+ * happen in versions before 0.9 is that you can accidentally leave
+ * that value close to the correct value, but outside the search
+ * range, then when you run the search, it computes the initial
+ * best-position as being the uninitialized value it starts with
+ * (i.e. whatever you had it set to before running solve_for).  If the
+ * value you have it initially set to is closer to the right number
+ * than any other position within the search range then it will
+ * improperly attribute that diff to the first value in the search
+ * range and return the wrong thing.
+ */
+}
+
+"""
+    print(s)
+    input('Press <enter> to continue.')
+
 from report import comma
 
 class Investigator(object):
@@ -204,36 +255,10 @@ withholdings that will happen afterwards.
 
         m.override(self.e.iso_exercise_income_usd, orig)
 
-    def question_8(self):
-        self._qst(8, "We sell nothing on day 1, then the price drops.")
-
-        # Place an order for all RSUs
-        price = m.ipo_price_usd - 5
-        orders = myMeager.sales_orders_rsu(self.m, price)
-        self.m.override(self.e.sales_orders, orders)
-        print("Sell Price:         $ %s" % comma(price,dec=False,white=False))
-        print("Cash Cleared:       $ %s" % comma(m.cleared_from_sale_usd,
-                                                 dec=False, white=False))
-        print()
-
-        price = m.ipo_price_usd
-        orders = myMeager.sales_orders_rsu(self.m, price)
-        self.m.override(self.e.sales_orders, orders)
-        print("Sell Price:         $ %s" % comma(price,dec=False,white=False))
-        print("Cash Cleared:       $ %s" % comma(m.cleared_from_sale_usd,
-                                                 dec=False, white=False))
-        print()
-
-        price = m.ipo_price_usd + 5
-        orders = myMeager.sales_orders_rsu(self.m, price)
-        self.m.override(self.e.sales_orders, orders)
-        print("Sell Price:         $ %s" % comma(price,dec=False,white=False))
-        print("Cash Cleared:       $ %s" % comma(m.cleared_from_sale_usd,
-                                                 dec=False, white=False))
-        print()
-
-    def question_9(self):
-        self._qst(9, "Basic financials vs share price")
+    def question_8(self, rsu_only=False):
+        augment = "RSU + NSO"
+        if rsu_only: augment = "RSU Only"
+        self._qst(8, "Basic financials vs share price (%s)" % augment)
 
         m = self.m
         e = m.enum
@@ -244,23 +269,28 @@ withholdings that will happen afterwards.
         up = 100
         orig = m.ipo_price_usd
 
-        x = []
+        x =       []
         y_gross = []
-        y_net = []
-        y_tax = []
-        y_amti = []
-
-        m.override(self.e.query_date, '12/31/20')
+        y_net =   []
+        y_tax =   []
+        y_amti =  []
 
         amt_exemption_rolloff = -1
         amt_exemption_gone = -1
 
-        for i in range(up):
+        for i in range(up+1):
             fmv = (i*(hi-lo)/up)+lo
             x.append(fmv)
 
             m.override(e.ipo_price_usd, fmv)
-            orders = myMeager.sales_orders_rsu(self.m, price=fmv)
+            orders = myMeager.sales_orders_all(m,
+                                               nso_first=True,
+                                               cheap_first=False,
+                                               prefer_exercise=True,
+                                               restricted=True,
+                                               price=fmv)
+            if rsu_only:
+                orders = myMeager.sales_orders_rsu(self.m, price=fmv)
             self.m.override(self.e.sales_orders, orders)
 
             if (0 > amt_exemption_rolloff
@@ -271,19 +301,25 @@ withholdings that will happen afterwards.
                 and m.amt_exemption_usd == 0):
                 amt_exemption_gone = fmv
 
-            y_gross.append(m.total_income_usd)
-            y_tax.append(m.tax_burden_usd)
+                m.override(e.iso_exercise_income_usd, 0)
+                m.override(e.ext_amt_income_usd, 0)
+
+            y_gross.append(m.total_income_usd-m.reg_income_usd)
+            y_tax.append(m.outstanding_taxes_usd)
             y_amti.append(m.amt_taxable_income_usd)
-            y_net.append(m.total_income_usd - m.outstanding_taxes_usd)
+            y_net.append(m.cleared_from_sale_usd)
+
+        # Reset our state
+        m.override(e.ipo_price_usd, orig)
 
         # Let's make our plots
         fig, ax = plt.subplots()
         ax.set_ylabel('Value (USD)')
 
-        ax.plot(x, y_gross, label='Post-Withholding Income')
-        ax.plot(x, y_tax, label='Total Taxes')
+        ax.plot(x, y_gross, label='Gross Sales Income (post Withholding)')
+        ax.plot(x, y_tax, label='Outstanding Tax Bill')
         ax.plot(x, y_amti, label='AMTI')
-        ax.plot(x, y_net, label='Net Income')
+        ax.plot(x, y_net, label='Net Income from Sale')
 
         if 0 < amt_exemption_rolloff:
             ax.axvline(amt_exemption_rolloff)
@@ -300,19 +336,15 @@ withholdings that will happen afterwards.
                     rotation=45)
 
         ax.grid()
-
-        self.rep.print_tax_summary()
-
-        m.override(e.ipo_price_usd, orig)
-
-        fig.suptitle('Financials vs fmv')
+        fig.suptitle('Financials vs FMV (%s)'%augment)
         ax.legend()
 
-        fname = 'fin.png'
+        fname = 'fin_all.png'
+        if rsu_only: fname = 'fin_rsu.png'
         path = os.path.join('.', fname)
-        fig.savefig(path, transparent=False)
+        fig.savefig(path, transparent=False, dpi=600)
 
-    def question_10(self):
+    def question_9(self):
         self._qst(9, "What does exercisable ISOs look like vs IPO price?")
 
         m = self.m
@@ -365,11 +397,13 @@ withholdings that will happen afterwards.
             (amt, iso, strike, cost) = self.amt_free_iso()
 
             if (0 > amt_exemption_rolloff
-                and m.amt_base_income_usd > m.amt_exemption_rolloff_threshhold_usd):
+                and m.amt_base_income_usd > m.amt_exemption_rolloff_threshhold_usd-10*m.ipo_price_usd
+                and m.amt_base_income_usd < m.amt_exemption_rolloff_threshhold_usd+10*m.ipo_price_usd):
                 amt_exemption_rolloff = fmv
                 rolloff_val = iso
 
             if (0 > amt_exemption_gone
+                and 0 < amt_exemption_rolloff
                 and m.amt_exemption_usd == 0):
                 amt_exemption_gone = fmv
                 gone_val = iso
@@ -441,14 +475,13 @@ withholdings that will happen afterwards.
                            "All ISO's Available",
                            rotation=0)
 
-
         fig.suptitle('ISO Outlook vs FMV')
         ax_shares.legend(loc=3)
         ax_dollars.legend()
 
         fname = 'iso.png'
         path = os.path.join('.', fname)
-        fig.savefig(path, transparent=False)
+        fig.savefig(path, transparent=False, dpi=600)
 
     def go(self):
         self.question_1()
@@ -459,8 +492,8 @@ withholdings that will happen afterwards.
         self.question_6()
         self.question_7()
         self.question_8()
+        self.question_8(rsu_only=True)
         self.question_9()
-        self.question_10() 
         print()
 
 if __name__ == '__main__':
