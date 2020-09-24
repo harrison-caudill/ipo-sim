@@ -150,7 +150,8 @@ class Grant(object):
         self.sold = sold
 
         self.strike_usd = strike_usd
-        assert (strike_usd or ('rsu' == vehicle))
+        if (not not strike_usd) == ('rsu' == vehicle):
+            raise ValueError()
 
         self.start = parse_date(start)
         self.n_periods = n_periods

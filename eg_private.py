@@ -30,8 +30,7 @@ GRANTS = [
                last_date='1/1/23', last_val=500,
                n_shares=96000,
                exercised=0,
-               sold=0,
-               strike_usd=1.75),
+               sold=0),
 
     # Sometimes, they do grants as bonuses
     Grant(name='BonusTigers',
