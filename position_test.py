@@ -34,7 +34,7 @@ import position as anAwkward
 GRANTS = [
     Grant(name='rsu',
           vehicle='rsu',
-          strike_usd=4,
+          strike_usd=0,
           start='1/1/20',
           n_periods=12,
           n_shares=1<<0,
@@ -144,7 +144,7 @@ GRANTS = [
 EASY = [
     Grant(name='rsu',
           vehicle='rsu',
-          strike_usd=4,
+          strike_usd=0,
           start='1/1/20',
           n_periods=12,
           n_shares=10,
@@ -232,8 +232,7 @@ class TestGrant(object):
                        last_date='1/1/24', last_val=250,
                        n_shares=48000,
                        exercised=0,
-                       sold=0,
-                       strike_usd=1.75)
+                       sold=0)
         with pytest.raises(ValueError):
             g = from_table(name='RSU-TK421',
                            vehicle='rsu',
@@ -242,8 +241,7 @@ class TestGrant(object):
                            last_date='1/1/24', last_val=250,
                            n_shares=4800,
                            exercised=0,
-                           sold=0,
-                           strike_usd=1.75)
+                           sold=0)
 
     def test_unvested(self):
         g = Grant(name='test',
@@ -369,6 +367,45 @@ class TestGrant(object):
 
         assert 6*4 == g.vested_outstanding_cost('1/2/21')
 
+    def test_strike(self):
+        with pytest.raises(ValueError):
+            g = Grant(name='test',
+                      vehicle='rsu',
+                      strike_usd=4,
+                      start='1/2/20',
+                      exercised=6,
+                      n_periods=12,
+                      n_shares=12,
+                      period_months=1)
+
+        with pytest.raises(ValueError):
+            g = Grant(name='test',
+                      vehicle='iso',
+                      strike_usd=0,
+                      start='1/2/20',
+                      exercised=6,
+                      n_periods=12,
+                      n_shares=12,
+                      period_months=1)
+
+        g = Grant(name='test',
+                  vehicle='rsu',
+                  strike_usd=0,
+                  start='1/2/20',
+                  exercised=6,
+                  n_periods=12,
+                  n_shares=12,
+                  period_months=1)
+
+        g = Grant(name='test',
+                  vehicle='iso',
+                  strike_usd=5,
+                  start='1/2/20',
+                  exercised=6,
+                  n_periods=12,
+                  n_shares=12,
+                  period_months=1)
+
 
 class TestPosition(object):
     def test_shares_total_n(self, model):
@@ -420,6 +457,7 @@ class TestPosition(object):
         m.override(e.query_date, '1/1/21')
         n = TOT - (3*(1<<10)>>2) # total vested
         n -= (1 + (1<<4) + 1 + (1<<6))
+        n -= 1 # zero cost for the rsu
         res = (n << 2) + (1<<8) * 36 # one of them was $40/share
         assert m.exercise_cost_vested_outstanding_usd == res
 

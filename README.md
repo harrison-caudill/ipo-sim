@@ -117,15 +117,14 @@ double their annual income in that year's taxes?).
 ## Cap Table
 
 This shows basic tabular information about your stock positions.  The
-only interesting bit is that it discusses `Liquidated` shares, which
-includes both shares that are liquidated by the IRS/FTB as well as
-shares that are sold.
+only interesting bit is that it discusses `Withheld` shares, which
+illustrates shares that are liquidated by the IRS/FTB.  The `Sold` shares are those that contribute to dollars in your bank account.
 
 ```
-        ID       Type  Strike        Vested       Liquidated      Remaining
-      RSU-TK421  rsu    1.8          41,500               0          27,149
-    BonusTigers  nso    2.0          10,000               0           9,750
-    javax.swing  iso    4.0          91,667               0          91,667
+        ID       Type  Strike        Vested        Withheld            Sold       Remaining
+      RSU-TK421  rsu    0.0          41,500          14,351          27,149               0
+    BonusTigers  nso    2.0          10,000               0           9,750               0
+    javax.swing  iso    4.0         114,583               0          42,200          72,383
 ```
 
 

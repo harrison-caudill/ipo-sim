@@ -73,15 +73,11 @@ def from_table(name,
     n_periods = int(full_months / float(period_months))
     assert(not (n_periods % 1))
 
-    print(n_periods)
-
     n_cliff = first_val
     negative_cliff = (last_val < (second_val-1))
 
     # is the total number of shares sane?
     regular_vest = round((n_shares-first_val-last_val)/(n_periods-1), 0)
-    print(n_shares, first_val, last_val, n_periods)
-    print(regular_vest)
     if not regular_vest == second_val:
         raise ValueError("Invalid number of share specified %d vs %d" %(
             regular_vest, second_val))
@@ -150,7 +146,8 @@ class Grant(object):
         self.sold = sold
 
         self.strike_usd = strike_usd
-        assert (strike_usd or ('rsu' == vehicle))
+        if (not not strike_usd) == ('rsu' == vehicle):
+            raise ValueError()
 
         self.start = parse_date(start)
         self.n_periods = n_periods
