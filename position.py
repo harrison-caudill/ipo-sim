@@ -73,11 +73,15 @@ def from_table(name,
     n_periods = int(full_months / float(period_months))
     assert(not (n_periods % 1))
 
+    print(n_periods)
+
     n_cliff = first_val
     negative_cliff = (last_val < (second_val-1))
 
     # is the total number of shares sane?
     regular_vest = round((n_shares-first_val-last_val)/(n_periods-1), 0)
+    print(n_shares, first_val, last_val, n_periods)
+    print(regular_vest)
     if not regular_vest == second_val:
         raise ValueError("Invalid number of share specified %d vs %d" %(
             regular_vest, second_val))
